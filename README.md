@@ -2,8 +2,8 @@
 
 ## WARNING
 
-This code is a very early swing at extending Knex to use pt-online-schema-change
-for online DB migrations.
+This code is a very early swing at extending Knex to use
+`pt-online-schema-change` for online DB migrations.
 
 A [Knex](https://knexjs.org/) helper for running `ALTER TABLE` operations online
 using
