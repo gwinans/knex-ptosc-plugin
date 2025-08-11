@@ -2,77 +2,175 @@
 
 ## WARNING
 
-This is currently VERY early, prototype code and should not be used in
-production.
+This code is a very early swing at extending Knex to use pt-online-schema-change
+for online DB migrations.
 
-Knex plugin to run
-[pt-online-schema-change](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html)
-with dry-run support and extended options.
+A [Knex](https://knexjs.org/) helper for running `ALTER TABLE` operations online
+using
+[Percona Toolkit's `pt-online-schema-change`](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html)
+(pt-osc).
+
+This plugin intercepts Knex schema changes and runs them through **pt-osc** so
+they can be executed with minimal locking and downtime.
+
+---
+
+## Features
+
+- **Safe execution**: No shell concatenation, no command injection — arguments
+  are passed directly to the pt-osc binary.
+- **Password safety**: The database password is passed via `MYSQL_PWD`
+  environment variable (never on the command line or in logs).
+- **Atomic migration lock**: Uses Knex’s `knex_migrations_lock` row safely to
+  prevent concurrent schema changes.
+- **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
+- **Full ALTER support**: Works with direct ALTER strings or with Knex’s
+  `.alterTable()` builder syntax.
+- **Respects Knex bindings**: Correctly interpolates values from `.toSQL()`
+  output.
+
+---
+
+## Requirements
+
+- Node.js 16+
+- Knex configured for MySQL or MariaDB
+- [Percona Toolkit](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html)
+  installed and `pt-online-schema-change` available in `$PATH`
+- MySQL user with appropriate privileges, as required by Knex.
+
+---
 
 ## Installation
 
-This plugin is available via npmjs.com -
-https://www.npmjs.com/package/knex-ptosc-plugin
-
-```
+```sh
 npm install knex-ptosc-plugin
 ```
 
+---
+
 ## Usage
 
-You can run pt-online-schema-change with a raw SQL alter statement or by using
-Knex's schema builder syntax.
+### 1. Import
 
-# Important
-
-If you need to create or drop a table, use `knex.schema.createTable` or
-`knex.schema.dropTableIfExists`.
-
-This plugin expects `knex_migrations` and `knex_migrations_lock` to exist first.
-
-## Examples
-
-**With Schema Builder:**
-
+```js
+import { alterTableWithBuilder, alterTableWithPTOSC } from "knex-ptosc-plugin";
 ```
-const { alterTableWithBuilder } = require('knex-ptosc-plugin');
 
-exports.up = async function(knex) {
-  await alterTableWithBuilder(knex, 'users', (table) => {
-    table.string('nickname');
+---
+
+### 2. Direct ALTER statement
+
+If you already have the raw `ALTER` clause (without `ALTER TABLE tableName`
+prefix):
+
+```js
+await alterTableWithPTOSC(knex, "users", "ADD COLUMN nickname VARCHAR(50)", {
+  maxLoad: 150,
+  criticalLoad: 50,
+  alterForeignKeysMethod: "auto",
+});
+```
+
+This will:
+
+1. Run a dry-run `pt-online-schema-change` with your alter clause.
+2. If successful, run it again with `--execute`.
+
+---
+
+### 3. Knex `.alterTable()` builder
+
+Preferred when you’re already using Knex migrations:
+
+```js
+await alterTableWithBuilder(knex, "users", (t) => {
+  t.string("nickname").nullable();
+}, {
+  maxLoad: 150,
+  criticalLoad: 50,
+  alterForeignKeysMethod: "auto",
+});
+```
+
+The builder version will:
+
+- Compile the Knex schema change to SQL (including bindings)
+- Filter out only `ALTER TABLE` statements
+- Pass any DROP/CREATE table statements to the original runner process
+- Strip the `ALTER TABLE tableName` prefix and pass the clause to pt-osc
+- Use the migration lock to ensure only one migration runs at a time
+
+---
+
+## Options
+
+| Option                           | Type                                                       | Default                     | Description                                                                                            |
+| -------------------------------- | ---------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `password`                       | `string`                                                   | from Knex connection        | Override DB password; will be passed via `MYSQL_PWD` env                                               |
+| `maxLoad`                        | `number`                                                   | `undefined`                 | Passed to `--max-load` (e.g. `Threads_connected=150`)                                                  |
+| `criticalLoad`                   | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)                                                |
+| `alterForeignKeysMethod`         | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                                                                |
+| `ptoscPath`                      | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                                                                  |
+| _(Builder only)_ `migrationName` | `string`                                                   | `ptosc_<timestamp>`         | **Deprecated** — we no longer insert into `knex_migrations` manually. Knex handles migration tracking. |
+
+---
+
+## Safety & Security
+
+- **No shell**: Commands are executed via
+  [`child_process.execFile`](https://nodejs.org/api/child_process.html#child_processexecfilefile-args-options-callback)
+  with an **args array**, so backticks, semicolons, or other shell
+  metacharacters in table names or SQL will not be interpreted by a shell.
+- **Password is hidden**: Never appears in process list, logs, or command
+  history.
+- **Atomic locks**: Lock acquisition uses `UPDATE ... WHERE is_locked=0` to
+  avoid stealing locks from another process.
+- **Dry-run first**: Always verifies the migration before execution.
+
+---
+
+## Example Migration
+
+```js
+import { alterTableWithBuilder } from "knex-ptosc-plugin";
+
+export async function up(knex) {
+  await alterTableWithBuilder(knex, "users", (t) => {
+    t.string("nickname").nullable();
   }, {
-    // Optional plugin options:
-    maxLoad: 25,                    // integer, e.g. 25
-    criticalLoad: 50,               // integer, e.g. 50
-    alterForeignKeysMethod: 'auto', // 'auto' (default), 'rebuild_constraints', or 'drop_swap'
-  });
-};
-
-exports.down = async function(knex) {
-  await alterTableWithBuilder(knex, 'users', (table) => {
-    table.dropColumn('nickname');
-  });
-};
-```
-
-**With raw SQL:**
-
-```
-const { alterTableWithPTOSC } = require('knex-ptosc-plugin');
-
-exports.up = async function(knex) {
-  await alterTableWithPTOSC(knex, 'users', 'ADD COLUMN nickname VARCHAR(255)', {
-    maxLoad: 25,
+    maxLoad: 150,
     criticalLoad: 50,
-    alterForeignKeysMethod: 'auto',
   });
-};
+}
 
-exports.down = async function(knex) {
-    await alterTableWithPTOSC(knex, 'users', 'DROP COLUMN nickname', {
-        maxLoad: 25,
-        criticalLoad: 50,
-        alterForeignKeysMethod: 'auto',
-    });
-};
+export async function down(knex) {
+  await alterTableWithBuilder(knex, "users", (t) => {
+    t.dropColumn("nickname");
+  }, {
+    maxLoad: 150,
+    criticalLoad: 50,
+  });
+}
 ```
+
+---
+
+## Troubleshooting
+
+- **`pt-online-schema-change: command not found`**\
+  Make sure Percona Toolkit is installed and in your PATH, or pass `ptoscPath`
+  in options.
+
+- **Permission errors**\
+  Verify you followed the installation instructions for Knex.
+
+- **Foreign key issues**\
+  Use `alterForeignKeysMethod: 'rebuild_constraints'` or `'drop_swap'` if pt-osc
+  refuses to run due to FK constraints.
+
+---
+
+## License
+
+MIT © 2025 Geoff Winans

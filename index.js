@@ -1,52 +1,113 @@
-const { exec } = require('child_process');
+import { execFile } from 'child_process';
 
 const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
 
-function stripBackticks(sql) {
-  return sql.replace(/`/g, '');
-}
+/** Small helper */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Waits for knex_migrations_lock.is_locked to become 0.
- * Throws if timeout exceeded.
+ * Acquire knex's migration lock atomically.
+ * Will only update the lock row from 0 -> 1. Retries until timeout.
+ * Returns a release() function that sets 1 -> 0 if we acquired it.
+ * If the lock table doesn't exist, it becomes a no-op (best effort).
  */
-async function waitForLockRelease(knex, timeoutMs = 30000, intervalMs = 500) {
+async function acquireMigrationLock(knex, { timeoutMs = 30000, intervalMs = 500 } = {}) {
+  const hasLockTable = await knex.schema.hasTable('knex_migrations_lock').catch(() => false);
+  if (!hasLockTable) {
+    return { release: async () => {} };
+  }
+
   const start = Date.now();
-  while (true) {
-    const [{ is_locked }] = await knex('knex_migrations_lock').select('is_locked').limit(1);
-    if (!is_locked) return; // lock is free
-    if (Date.now() - start > timeoutMs) {
-      throw new Error('Timeout waiting for knex_migrations_lock to be released');
+  let acquired = false;
+
+  while (!acquired) {
+    const updated = await knex('knex_migrations_lock')
+      .where({ is_locked: 0 })
+      .update({ is_locked: 1 })
+      .catch(() => 0);
+
+    if (updated === 1) {
+      acquired = true;
+      break;
     }
-    await new Promise(res => setTimeout(res, intervalMs));
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('Timeout acquiring knex_migrations_lock');
+    }
+    await sleep(intervalMs);
   }
+
+  return {
+    release: async () => {
+      if (!acquired) return;
+      await knex('knex_migrations_lock')
+        .where({ is_locked: 1 })
+        .update({ is_locked: 0 })
+        .catch(() => {});
+    }
+  };
 }
 
-/**
- * Helper to run a function while holding the knex migration lock,
- * waiting for the lock to become free before acquiring it.
- */
-async function withMigrationLock(knex, fn) {
-
-  await waitForLockRelease(knex);
-
-  // Lock: set is_locked = 1
-  await knex('knex_migrations_lock').update({ is_locked: 1 });
-
-  try {
-    await fn();
-  } finally {
-    // Always unlock
-    await knex('knex_migrations_lock').update({ is_locked: 0 });
-  }
+/** Build pt-osc args array (no shell quoting) */
+function buildPtoscArgs({
+  alterSQL,
+  database,
+  table,
+  alterForeignKeysMethod,
+  host,
+  user,
+  port,
+  socketPath,
+  maxLoad,
+  criticalLoad,
+  dryRun
+}) {
+  const args = [
+    '--alter', alterSQL,
+    `--alter-foreign-keys-method=${alterForeignKeysMethod}`,
+    `D=${database},t=${table}`,
+    dryRun ? '--dry-run' : '--execute',
+    `--host=${host}`,
+    `--user=${user}`,
+  ];
+  if (port != null) args.push('--port', String(port));
+  if (socketPath) args.push('--socket', socketPath);
+  if (maxLoad != null) args.push('--max-load', `Threads_connected=${maxLoad}`);
+  if (criticalLoad != null) args.push('--critical-load', `Threads_running=${criticalLoad}`);
+  return args;
 }
 
-async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
+function logCommand(ptoscPath, args) {
+  const printable = [ptoscPath, ...args.map(a => (/\s/.test(a) ? `"${a}"` : a))].join(' ');
+  console.log(`[PT-OSC] Running: ${printable}`);
+}
+
+/** Low-level runner (no shell; password via env) */
+async function runPtoscProcess({ ptoscPath = 'pt-online-schema-change', args, envPassword }) {
+  const env = { ...process.env };
+  if (envPassword) env.MYSQL_PWD = String(envPassword);
+
+  logCommand(ptoscPath, args);
+
+  await new Promise((resolve, reject) => {
+    execFile(ptoscPath, args, { env }, (err, stdout, stderr) => {
+      if (stdout) console.log(stdout.trim());
+      if (err) {
+        const msg = (stderr && stderr.trim()) || err.message || 'pt-online-schema-change failed';
+        return reject(new Error(msg));
+      }
+      resolve();
+    });
+  });
+}
+
+/** Single ALTER via pt-osc */
+export async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
   const {
     password,
     maxLoad,
     criticalLoad,
     alterForeignKeysMethod = 'auto',
+    ptoscPath
   } = options;
 
   if (maxLoad !== undefined && !Number.isInteger(maxLoad)) {
@@ -57,108 +118,81 @@ async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
   }
   if (!VALID_FOREIGN_KEYS_METHODS.includes(alterForeignKeysMethod)) {
     throw new TypeError(
-      `alterForeignKeysMethod must be one of ${VALID_FOREIGN_KEYS_METHODS.join(', ')} ... got '${alterForeignKeysMethod}' instead.`
+      `alterForeignKeysMethod must be one of ${VALID_FOREIGN_KEYS_METHODS.join(', ')}; got '${alterForeignKeysMethod}'.`
     );
   }
 
-  console.log(`[PT-OSC] Starting dry-run for ALTER TABLE ${table} ${alterSQL}`);
+  const conn = knex.client.config.connection || {};
+  const usedPassword = password ?? conn.password;
 
-  await runPTOSC(
-    knex,
-    table,
-    alterSQL,
-    password,
-    maxLoad,
-    criticalLoad,
-    alterForeignKeysMethod,
-    true
-  );
-  console.log(`[PT-OSC] Dry-run successful. Executing...`);
-  await runPTOSC(
-    knex,
-    table,
-    alterSQL,
-    password,
-    maxLoad,
-    criticalLoad,
-    alterForeignKeysMethod,
-    false
-  );
-}
-
-async function runPTOSC(
-  knex,
-  table,
-  alterSQL,
-  password,
-  maxLoad,
-  criticalLoad,
-  alterForeignKeysMethod,
-  dryRun
-) {
-  const conn = knex.client.config.connection;
-  const usedPassword = password || conn.password;
-
-  // Skip CREATE TABLE statements
-  if (/^\s*CREATE\s+TABLE/i.test(alterSQL)) {
-    console.log(`[PT-OSC] Skipping CREATE TABLE for ${table}`);
-    return knex.schema.raw(alterSQL); // Let Knex run CREATE directly
+  // Let CREATE TABLE go through Knex (no pt-osc)
+  if (/^\s*CREATE\s+TABLE\b/i.test(alterSQL) || /^\s*DROP\s+TABLE\b/i.test(alterSQL) )  {
+    console.log(`[PT-OSC] Skipping pt-osc for CREATE/DROP TABLE statements`);
+    return knex.schema.raw(alterSQL);
   }
 
-  const cleanAlterSQL = stripBackticks(alterSQL);
+  // Dry-run
+  console.log(`[PT-OSC] Dry-run for ALTER TABLE ${table} ${alterSQL}`);
+  await runPtoscProcess({
+    ptoscPath,
+    args: buildPtoscArgs({
+      alterSQL,
+      database: conn.database,
+      table,
+      alterForeignKeysMethod,
+      host: conn.host || 'localhost',
+      user: conn.user,
+      port: conn.port,
+      socketPath: conn.socketPath,
+      maxLoad,
+      criticalLoad,
+      dryRun: true
+    }),
+    envPassword: usedPassword
+  });
 
-  const cmdParts = [
-    'pt-online-schema-change',
-    `--alter "${cleanAlterSQL}"`,
-    `--alter-foreign-keys-method=${alterForeignKeysMethod}`,
-    `D=${conn.database},t=${table}`,
-    dryRun ? '--dry-run' : '--execute',
-    `--host=${conn.host}`,
-    `--user=${conn.user}`,
-  ];
-
-  if (usedPassword) {
-    cmdParts.push(`--password='${usedPassword}'`);
-  }
-
-  if (maxLoad !== undefined) {
-    cmdParts.push(`--max-load="Threads_connected=${maxLoad}"`);
-  }
-
-  if (criticalLoad !== undefined) {
-    cmdParts.push(`--critical-load="Threads_running=${criticalLoad}"`);
-  }
-
-  const cmd = cmdParts.join(' ');
-
-  console.log(`[PT-OSC] Running: ${cmd}`);
-
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) return reject(new Error(stderr || err.message));
-      console.log(stdout);
-      resolve();
-    });
+  // Execute
+  console.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterSQL}`);
+  await runPtoscProcess({
+    ptoscPath,
+    args: buildPtoscArgs({
+      alterSQL,
+      database: conn.database,
+      table,
+      alterForeignKeysMethod,
+      host: conn.host || 'localhost',
+      user: conn.user,
+      port: conn.port,
+      socketPath: conn.socketPath,
+      maxLoad,
+      criticalLoad,
+      dryRun: false
+    }),
+    envPassword: usedPassword
   });
 }
 
 /**
- * Runs pt-online-schema-change for Knex schema alterTable operations.
- * Throws if no ALTER TABLE statements are generated, i.e. if user calls on CREATE TABLE.
+ * Builder path: compiles Knex alterTable callback, extracts ALTERs,
+ * applies bindings, and runs each through pt-osc.
  *
- * @param {object} knex Knex instance
- * @param {string} tableName Table name
- * @param {function} alterCallback Knex schema alterTable callback
- * @param {object} options Plugin options (password, maxLoad, criticalLoad, alterForeignKeysMethod, migrationName)
+ * NOTE: We do NOT write to knex_migrations — Knex manages that.
  */
-async function alterTableWithBuilder(knex, tableName, alterCallback, options = {}) {
+export async function alterTableWithBuilder(knex, tableName, alterCallback, options = {}) {
   const builder = knex.schema.alterTable(tableName, alterCallback);
-  const sqlStatements = builder.toSQL();
+  const compiled = builder.toSQL();
+  const stmts = Array.isArray(compiled) ? compiled : [compiled];
 
-  // Filter ALTER TABLE statements only
-  const alterStatements = sqlStatements
-    .map(stmt => stmt.sql)
-    .filter(sql => /^ALTER\s+TABLE/i.test(sql.trim()));
+  // Resolve bindings into full SQL strings
+  const sqls = stmts.map(s => {
+    const sql = s.sql ?? s;
+    const bindings = s.bindings ?? [];
+    return knex.raw(sql, bindings).toQuery();
+  });
+
+  const alterStatements = sqls
+    .map(sql => String(sql).trim())
+    .filter(sql => /^ALTER\s+TABLE\b/i.test(sql));
 
   if (alterStatements.length === 0) {
     throw new Error(
@@ -168,24 +202,15 @@ async function alterTableWithBuilder(knex, tableName, alterCallback, options = {
     );
   }
 
-  await withMigrationLock(knex, async () => {
-    for (const stmt of alterStatements) {
-      // Remove "ALTER TABLE `tableName` " prefix to get only the ALTER clause
-      const alterClause = stmt.replace(new RegExp(`^ALTER\\s+TABLE\\s+\\S+\\s+`, 'i'), '');
-      await alterTableWithPTOSC(knex, tableName, alterClause, options);
+  const { release } = await acquireMigrationLock(knex);
+  try {
+    for (const fullAlter of alterStatements) {
+      // Extract the clause after: ALTER TABLE <name> <CLAUSE>
+      const m = fullAlter.match(/^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i);
+      const clause = m ? m[2] : fullAlter.replace(/^ALTER\s+TABLE\s+\S+\s+/i, '');
+      await alterTableWithPTOSC(knex, tableName, clause, options);
     }
-
-    // Insert migration record after successful migration
-    const [{ max: maxBatch }] = await knex('knex_migrations').max('batch as max');
-    await knex('knex_migrations').insert({
-      name: options.migrationName || `ptosc_${Date.now()}`,
-      batch: (maxBatch || 0) + 1,
-      migration_time: new Date()
-    });
-  });
+  } finally {
+    await release();
+  }
 }
-
-module.exports = {
-  alterTableWithPTOSC,
-  alterTableWithBuilder,
-};
