@@ -8,13 +8,9 @@ export interface PtoscOptions {
   ptoscPath?: string;        // custom path to pt-online-schema-change
 }
 
-export declare function alterTableWithPTOSC(
-  knex: Knex,
-  table: string,
-  alterSQL: string,
-  options?: PtoscOptions
-): Promise<void>;
-
+/**
+ * Public API: ONLY builder-based alters (no raw SQL).
+ */
 export declare function alterTableWithBuilder(
   knex: Knex,
   tableName: string,

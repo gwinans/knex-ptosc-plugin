@@ -51,37 +51,19 @@ npm install knex-ptosc-plugin
 
 ## Usage
 
-### 1. Import
+### 1.
+
+Import the plugin.
 
 ```js
-import { alterTableWithBuilder, alterTableWithPTOSC } from "knex-ptosc-plugin";
+import { alterTableWithBuilder } from "knex-ptosc-plugin";
 ```
 
 ---
 
-### 2. Direct ALTER statement
+### 2.
 
-If you already have the raw `ALTER` clause (without `ALTER TABLE tableName`
-prefix):
-
-```js
-await alterTableWithPTOSC(knex, "users", "ADD COLUMN nickname VARCHAR(50)", {
-  maxLoad: 150,
-  criticalLoad: 50,
-  alterForeignKeysMethod: "auto",
-});
-```
-
-This will:
-
-1. Run a dry-run `pt-online-schema-change` with your alter clause.
-2. If successful, run it again with `--execute`.
-
----
-
-### 3. Knex `.alterTable()` builder
-
-Preferred when you’re already using Knex migrations:
+Build your migration.
 
 ```js
 await alterTableWithBuilder(knex, "users", (t) => {
@@ -98,21 +80,20 @@ The builder version will:
 - Compile the Knex schema change to SQL (including bindings)
 - Filter out only `ALTER TABLE` statements
 - Pass any DROP/CREATE table statements to the original runner process
-- Strip the `ALTER TABLE tableName` prefix and pass the clause to pt-osc
+- Strip `ALTER TABLE tableName` prefix and pass the clause to pt-osc
 - Use the migration lock to ensure only one migration runs at a time
 
 ---
 
 ## Options
 
-| Option                           | Type                                                       | Default                     | Description                                                                                            |
-| -------------------------------- | ---------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `password`                       | `string`                                                   | from Knex connection        | Override DB password; will be passed via `MYSQL_PWD` env                                               |
-| `maxLoad`                        | `number`                                                   | `undefined`                 | Passed to `--max-load` (e.g. `Threads_connected=150`)                                                  |
-| `criticalLoad`                   | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)                                                |
-| `alterForeignKeysMethod`         | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                                                                |
-| `ptoscPath`                      | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                                                                  |
-| _(Builder only)_ `migrationName` | `string`                                                   | `ptosc_<timestamp>`         | **Deprecated** — we no longer insert into `knex_migrations` manually. Knex handles migration tracking. |
+| Option                   | Type                                                       | Default                     | Description                                              |
+| ------------------------ | ---------------------------------------------------------- | --------------------------- | -------------------------------------------------------- |
+| `password`               | `string`                                                   | from Knex connection        | Override DB password; will be passed via `MYSQL_PWD` env |
+| `maxLoad`                | `number`                                                   | `undefined`                 | Passed to `--max-load` (e.g. `Threads_connected=150`)    |
+| `criticalLoad`           | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)  |
+| `alterForeignKeysMethod` | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                  |
+| `ptoscPath`              | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                    |
 
 ---
 

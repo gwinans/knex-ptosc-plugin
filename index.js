@@ -108,8 +108,11 @@ async function runPtoscProcess({ ptoscPath = 'pt-online-schema-change', args, en
   });
 }
 
-/** Single ALTER via pt-osc */
-export async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
+/**
+ * INTERNAL ONLY: run pt-osc for one ALTER clause (no CREATE handling here).
+ * Not exported to avoid any public raw-SQL entrypoint.
+ */
+async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   const {
     password,
     maxLoad,
@@ -133,18 +136,12 @@ export async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
   const conn = knex.client.config.connection || {};
   const usedPassword = password ?? conn.password;
 
-  // Let CREATE TABLE go through Knex (no pt-osc)
-  if (/^\s*CREATE\s+TABLE\b/i.test(alterSQL)) {
-    console.log(`[PT-OSC] Skipping pt-osc for CREATE TABLE on ${table}`);
-    return knex.schema.raw(alterSQL);
-  }
-
   // Dry-run
-  console.log(`[PT-OSC] Dry-run for ALTER TABLE ${table} ${alterSQL}`);
+  console.log(`[PT-OSC] Dry-run for ALTER TABLE ${table} ${alterClause}`);
   await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
-      alterSQL,
+      alterSQL: alterClause,
       database: conn.database,
       table,
       alterForeignKeysMethod,
@@ -160,11 +157,11 @@ export async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
   });
 
   // Execute
-  console.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterSQL}`);
+  console.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
   await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
-      alterSQL,
+      alterSQL: alterClause,
       database: conn.database,
       table,
       alterForeignKeysMethod,
@@ -181,10 +178,9 @@ export async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
 }
 
 /**
- * Builder path: compiles Knex alterTable callback, extracts ALTERs,
- * applies bindings, and runs each through pt-osc.
- *
- * NOTE: We do NOT write to knex_migrations — Knex manages that.
+ * Public API: ONLY the Knex builder path.
+ * Compiles the alterTable callback, extracts ALTER statements, applies bindings,
+ * and runs each via pt-osc under the migration lock.
  */
 export async function alterTableWithBuilder(knex, tableName, alterCallback, options = {}) {
   const builder = knex.schema.alterTable(tableName, alterCallback);
@@ -198,6 +194,7 @@ export async function alterTableWithBuilder(knex, tableName, alterCallback, opti
     return knex.raw(sql, bindings).toQuery();
   });
 
+  // Only keep ALTER TABLE statements
   const alterStatements = sqls
     .map(sql => String(sql).trim())
     .filter(sql => /^ALTER\s+TABLE\b/i.test(sql));
@@ -205,8 +202,7 @@ export async function alterTableWithBuilder(knex, tableName, alterCallback, opti
   if (alterStatements.length === 0) {
     throw new Error(
       `No ALTER TABLE statements generated for "${tableName}". ` +
-      `This plugin supports only ALTER operations. ` +
-      `Use knex.schema.createTable(...) for creating new tables.`
+      `Only ALTER operations are supported. Use knex.schema.createTable(...) to create tables.`
     );
   }
 
@@ -216,7 +212,7 @@ export async function alterTableWithBuilder(knex, tableName, alterCallback, opti
       // Extract the clause after: ALTER TABLE <name> <CLAUSE>
       const m = fullAlter.match(/^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i);
       const clause = m ? m[2] : fullAlter.replace(/^ALTER\s+TABLE\s+\S+\s+/i, '');
-      await alterTableWithPTOSC(knex, tableName, clause, options);
+      await runAlterClauseWithPtosc(knex, tableName, clause, options);
     }
   } finally {
     await release();
