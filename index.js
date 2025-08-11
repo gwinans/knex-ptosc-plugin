@@ -9,12 +9,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * Acquire knex's migration lock atomically.
  * Will only update the lock row from 0 -> 1. Retries until timeout.
  * Returns a release() function that sets 1 -> 0 if we acquired it.
- * If the lock table doesn't exist, it becomes a no-op (best effort).
+ * If required tables don't exist, throw immediately.
  */
-async function acquireMigrationLock(knex, { timeoutMs = 30000, intervalMs = 500 } = {}) {
-  const hasLockTable = await knex.schema.hasTable('knex_migrations_lock').catch(() => false);
-  if (!hasLockTable) {
-    return { release: async () => {} };
+async function acquireMigrationLock(
+  knex,
+  { timeoutMs = 30000, intervalMs = 500 } = {}
+) {
+  const hasMigrationsTable = await knex.schema.hasTable('knex_migrations');
+  const hasLockTable = await knex.schema.hasTable('knex_migrations_lock');
+
+  if (!hasMigrationsTable || !hasLockTable) {
+    throw new Error(
+      'Required Knex migration tables do not exist. ' +
+      'Ensure knex_migrations and knex_migrations_lock are created before running pt-osc migrations.'
+    );
   }
 
   const start = Date.now();
@@ -43,7 +51,7 @@ async function acquireMigrationLock(knex, { timeoutMs = 30000, intervalMs = 500 
         .where({ is_locked: 1 })
         .update({ is_locked: 0 })
         .catch(() => {});
-    }
+    },
   };
 }
 
@@ -126,8 +134,8 @@ export async function alterTableWithPTOSC(knex, table, alterSQL, options = {}) {
   const usedPassword = password ?? conn.password;
 
   // Let CREATE TABLE go through Knex (no pt-osc)
-  if (/^\s*CREATE\s+TABLE\b/i.test(alterSQL) || /^\s*DROP\s+TABLE\b/i.test(alterSQL) )  {
-    console.log(`[PT-OSC] Skipping pt-osc for CREATE/DROP TABLE statements`);
+  if (/^\s*CREATE\s+TABLE\b/i.test(alterSQL)) {
+    console.log(`[PT-OSC] Skipping pt-osc for CREATE TABLE on ${table}`);
     return knex.schema.raw(alterSQL);
   }
 
