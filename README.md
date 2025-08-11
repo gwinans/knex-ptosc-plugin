@@ -2,11 +2,17 @@
 
 ## WARNING
 
-This is currently VERY early, prototype code and should not be used in production.
+This is currently VERY early, prototype code and should not be used in
+production.
 
-Knex plugin to run [pt-online-schema-change](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html) with dry-run support and extended options.
+Knex plugin to run
+[pt-online-schema-change](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html)
+with dry-run support and extended options.
 
 ## Installation
+
+This plugin is available via npmjs.com -
+https://www.npmjs.com/package/knex-ptosc-plugin
 
 ```
 npm install knex-ptosc-plugin
@@ -14,11 +20,13 @@ npm install knex-ptosc-plugin
 
 ## Usage
 
-You can run pt-online-schema-change with a raw SQL Alter statement or using Knex's schema builder syntax.
+You can run pt-online-schema-change with a raw SQL alter statement or by using
+Knex's schema builder syntax.
 
 # Important
 
-If you need to create or drop a table, use `knex.schema.createTable` or `knex.schema.dropTableIfExists`.
+If you need to create or drop a table, use `knex.schema.createTable` or
+`knex.schema.dropTableIfExists`.
 
 This plugin expects `knex_migrations` and `knex_migrations_lock` to exist first.
 
