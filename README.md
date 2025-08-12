@@ -148,7 +148,8 @@ export async function down(knex) {
 
 - **Foreign key issues**\
   Use `alterForeignKeysMethod: 'rebuild_constraints'` or `'drop_swap'` if pt-osc
-  refuses to run due to FK constraints.
+  refuses to run due to FK constraints. Be careful with self-referencing FKs.
+  Even ptosc can't handle them correctly.
 
 ---
 
