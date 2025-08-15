@@ -13,15 +13,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 async function acquireMigrationLock(
   knex,
-  { timeoutMs = 30000, intervalMs = 500 } = {}
+  {
+    migrationsTable = 'knex_migrations',
+    migrationsLockTable = 'knex_migrations_lock',
+    timeoutMs = 30000,
+    intervalMs = 500,
+  } = {},
 ) {
-  const hasMigrationsTable = await knex.schema.hasTable('knex_migrations');
-  const hasLockTable = await knex.schema.hasTable('knex_migrations_lock');
+  const hasMigrationsTable = await knex.schema.hasTable(migrationsTable);
+  const hasLockTable = await knex.schema.hasTable(migrationsLockTable);
 
   if (!hasMigrationsTable || !hasLockTable) {
     throw new Error(
       'Required Knex migration tables do not exist. ' +
-      'Ensure knex_migrations and knex_migrations_lock are created before running pt-osc migrations.'
+      `Ensure ${migrationsTable} and ${migrationsLockTable} are created before running pt-osc migrations.`
     );
   }
 
@@ -29,7 +34,7 @@ async function acquireMigrationLock(
   let acquired = false;
 
   while (!acquired) {
-    const updated = await knex('knex_migrations_lock')
+    const updated = await knex(migrationsLockTable)
       .where({ is_locked: 0 })
       .update({ is_locked: 1 })
       .catch(() => 0);
@@ -39,7 +44,7 @@ async function acquireMigrationLock(
       break;
     }
     if (Date.now() - start > timeoutMs) {
-      throw new Error('Timeout acquiring knex_migrations_lock');
+      throw new Error(`Timeout acquiring ${migrationsLockTable}`);
     }
     await sleep(intervalMs);
   }
@@ -47,7 +52,7 @@ async function acquireMigrationLock(
   return {
     release: async () => {
       if (!acquired) return;
-      await knex('knex_migrations_lock')
+      await knex(migrationsLockTable)
         .where({ is_locked: 1 })
         .update({ is_locked: 0 })
         .catch(() => {});
@@ -313,7 +318,7 @@ export async function alterTableWithBuilder(knex, tableName, alterCallback, opti
     );
   }
 
-  const { release } = await acquireMigrationLock(knex);
+  const { release } = await acquireMigrationLock(knex, options);
   try {
     for (const fullAlter of alterStatements) {
       // Extract the clause after: ALTER TABLE <name> <CLAUSE>
