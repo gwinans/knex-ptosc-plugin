@@ -1,4 +1,4 @@
-import { execFile } from 'child_process';
+import childProcess from 'child_process';
 
 const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
 
@@ -97,7 +97,7 @@ async function runPtoscProcess({ ptoscPath = 'pt-online-schema-change', args, en
   logCommand(ptoscPath, args);
 
   await new Promise((resolve, reject) => {
-    execFile(ptoscPath, args, { env }, (err, stdout, stderr) => {
+    childProcess.execFile(ptoscPath, args, { env }, (err, stdout, stderr) => {
       if (stdout) console.log(stdout.trim());
       if (err) {
         const msg = (stderr && stderr.trim()) || err.message || 'pt-online-schema-change failed';
