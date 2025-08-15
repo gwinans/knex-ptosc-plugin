@@ -94,6 +94,23 @@ The builder version will:
 | `criticalLoad`           | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)  |
 | `alterForeignKeysMethod` | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                  |
 | `ptoscPath`              | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                    |
+| `analyzeBeforeSwap`      | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`    |
+| `checkAlter`             | `boolean`                                                  | `true`                      | `--check-alter` or `--nocheck-alter`                    |
+| `checkForeignKeys`       | `boolean`                                                  | `true`                      | `--check-foreign-keys` or `--nocheck-foreign-keys`      |
+| `checkInterval`          | `number`                                                   | `undefined`                 | Passed to `--check-interval`                             |
+| `checkPlan`              | `boolean`                                                  | `true`                      | `--check-plan` or `--nocheck-plan`                      |
+| `checkReplicationFilters`| `boolean`                                                  | `true`                      | `--check-replication-filters` or `--nocheck-replication-filters` |
+| `checkReplicaLag`        | `boolean`                                                  | `false`                     | Adds `--check-replica-lag`                               |
+| `chunkIndex`             | `string`                                                   | `undefined`                 | Passed to `--chunk-index`                                |
+| `chunkIndexColumns`      | `number`                                                   | `undefined`                 | Passed to `--chunk-index-columns`                        |
+| `chunkSize`              | `number`                                                   | `1000`                      | Passed to `--chunk-size`                                 |
+| `chunkSizeLimit`         | `number`                                                   | `4.0`                       | Passed to `--chunk-size-limit`                           |
+| `chunkTime`              | `number`                                                   | `0.5`                       | Passed to `--chunk-time`                                 |
+| `dropNewTable`           | `boolean`                                                  | `true`                      | `--drop-new-table` or `--nodrop-new-table`              |
+| `dropOldTable`           | `boolean`                                                  | `true`                      | `--drop-old-table` or `--nodrop-old-table`              |
+| `dropTriggers`           | `boolean`                                                  | `true`                      | `--drop-triggers` or `--nodrop-triggers`                |
+| `checkUniqueKeyChange`   | `boolean`                                                  | `true`                      | `--check-unique-key-change` or `--nocheck-unique-key-change` |
+| `maxLag`                 | `number`                                                   | `25`                        | Passed to `--max-lag`                                   |
 
 ---
 

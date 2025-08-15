@@ -6,6 +6,23 @@ export interface PtoscOptions {
   criticalLoad?: number;     // Threads_running limit
   alterForeignKeysMethod?: 'auto' | 'rebuild_constraints' | 'drop_swap' | 'none';
   ptoscPath?: string;        // custom path to pt-online-schema-change
+  analyzeBeforeSwap?: boolean;
+  checkAlter?: boolean;
+  checkForeignKeys?: boolean;
+  checkInterval?: number;
+  checkPlan?: boolean;
+  checkReplicationFilters?: boolean;
+  checkReplicaLag?: boolean;
+  chunkIndex?: string;
+  chunkIndexColumns?: number;
+  chunkSize?: number;
+  chunkSizeLimit?: number;
+  chunkTime?: number;
+  dropNewTable?: boolean;
+  dropOldTable?: boolean;
+  dropTriggers?: boolean;
+  checkUniqueKeyChange?: boolean;
+  maxLag?: number;
 }
 
 /**
