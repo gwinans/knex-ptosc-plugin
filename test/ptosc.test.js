@@ -64,4 +64,13 @@ describe('knex-ptosc-plugin', () => {
     const sizeIdx = args.indexOf('--chunk-size');
     expect(args[sizeIdx + 1]).toBe('2000');
   });
+
+  it('uses a custom logger when provided', async () => {
+    const knex = createKnex();
+    const logger = { log: vi.fn(), error: vi.fn() };
+    const consoleSpy = vi.spyOn(console, 'log');
+    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger });
+    expect(logger.log).toHaveBeenCalled();
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
 });

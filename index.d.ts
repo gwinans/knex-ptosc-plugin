@@ -23,6 +23,7 @@ export interface PtoscOptions {
   dropTriggers?: boolean;
   checkUniqueKeyChange?: boolean;
   maxLag?: number;
+  logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
 }
 
 /**

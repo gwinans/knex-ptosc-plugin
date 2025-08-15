@@ -118,23 +118,24 @@ function buildPtoscArgs({
   return args;
 }
 
-function logCommand(ptoscPath, args) {
+function logCommand(ptoscPath, args, logger = console) {
   const printable = [ptoscPath, ...args.map(a => (/\s/.test(a) ? `"${a}"` : a))].join(' ');
-  console.log(`[PT-OSC] Running: ${printable}`);
+  logger.log(`[PT-OSC] Running: ${printable}`);
 }
 
 /** Low-level runner (no shell; password via env) */
-async function runPtoscProcess({ ptoscPath = 'pt-online-schema-change', args, envPassword }) {
+async function runPtoscProcess({ ptoscPath = 'pt-online-schema-change', args, envPassword, logger = console }) {
   const env = { ...process.env };
   if (envPassword) env.MYSQL_PWD = String(envPassword);
 
-  logCommand(ptoscPath, args);
+  logCommand(ptoscPath, args, logger);
 
   await new Promise((resolve, reject) => {
     childProcess.execFile(ptoscPath, args, { env }, (err, stdout, stderr) => {
-      if (stdout) console.log(stdout.trim());
+      if (stdout) logger.log(stdout.trim());
       if (err) {
         const msg = (stderr && stderr.trim()) || err.message || 'pt-online-schema-change failed';
+        if (msg) logger.error(msg);
         return reject(new Error(msg));
       }
       resolve();
@@ -169,7 +170,8 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     dropOldTable = true,
     dropTriggers = true,
     checkUniqueKeyChange = true,
-    maxLag = 25
+    maxLag = 25,
+    logger = console
   } = options;
 
   if (maxLoad !== undefined && !Number.isInteger(maxLoad)) {
@@ -206,7 +208,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   const usedPassword = password ?? conn.password;
 
   // Dry-run
-  console.log(`[PT-OSC] Dry-run for ALTER TABLE ${table} ${alterClause}`);
+  logger.log(`[PT-OSC] Dry-run for ALTER TABLE ${table} ${alterClause}`);
   await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
@@ -239,11 +241,12 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       checkUniqueKeyChange,
       maxLag
     }),
-    envPassword: usedPassword
+    envPassword: usedPassword,
+    logger
   });
 
   // Execute
-  console.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
+  logger.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
   await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
@@ -276,7 +279,8 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       checkUniqueKeyChange,
       maxLag
     }),
-    envPassword: usedPassword
+    envPassword: usedPassword,
+    logger
   });
 }
 
