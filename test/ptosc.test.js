@@ -47,4 +47,21 @@ describe('knex-ptosc-plugin', () => {
     await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {});
     expect(execFileSpy).toHaveBeenCalledTimes(2); // dry-run + execute
   });
+
+  it('supports additional pt-osc flags', async () => {
+    const knex = createKnex();
+    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {
+      analyzeBeforeSwap: false,
+      checkReplicaLag: true,
+      maxLag: 10,
+      chunkSize: 2000
+    });
+    const args = execFileSpy.mock.calls[0][1];
+    expect(args).toContain('--noanalyze-before-swap');
+    expect(args).toContain('--check-replica-lag');
+    const lagIdx = args.indexOf('--max-lag');
+    expect(args[lagIdx + 1]).toBe('10');
+    const sizeIdx = args.indexOf('--chunk-size');
+    expect(args[sizeIdx + 1]).toBe('2000');
+  });
 });

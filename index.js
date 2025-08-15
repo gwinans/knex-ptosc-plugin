@@ -67,7 +67,24 @@ function buildPtoscArgs({
   socketPath,
   maxLoad,
   criticalLoad,
-  dryRun
+  dryRun,
+  analyzeBeforeSwap = true,
+  checkAlter = true,
+  checkForeignKeys = true,
+  checkInterval,
+  checkPlan = true,
+  checkReplicationFilters = true,
+  checkReplicaLag = false,
+  chunkIndex,
+  chunkIndexColumns,
+  chunkSize = 1000,
+  chunkSizeLimit = 4.0,
+  chunkTime = 0.5,
+  dropNewTable = true,
+  dropOldTable = true,
+  dropTriggers = true,
+  checkUniqueKeyChange = true,
+  maxLag = 25
 }) {
   const args = [
     '--alter', alterSQL,
@@ -81,6 +98,23 @@ function buildPtoscArgs({
   if (socketPath) args.push('--socket', socketPath);
   if (maxLoad != null) args.push('--max-load', `Threads_connected=${maxLoad}`);
   if (criticalLoad != null) args.push('--critical-load', `Threads_running=${criticalLoad}`);
+  args.push(analyzeBeforeSwap ? '--analyze-before-swap' : '--noanalyze-before-swap');
+  args.push(checkAlter ? '--check-alter' : '--nocheck-alter');
+  args.push(checkForeignKeys ? '--check-foreign-keys' : '--nocheck-foreign-keys');
+  if (checkInterval != null) args.push('--check-interval', String(checkInterval));
+  args.push(checkPlan ? '--check-plan' : '--nocheck-plan');
+  args.push(checkReplicationFilters ? '--check-replication-filters' : '--nocheck-replication-filters');
+  if (checkReplicaLag) args.push('--check-replica-lag');
+  if (chunkIndex) args.push('--chunk-index', chunkIndex);
+  if (chunkIndexColumns != null) args.push('--chunk-index-columns', String(chunkIndexColumns));
+  if (chunkSize != null) args.push('--chunk-size', String(chunkSize));
+  if (chunkSizeLimit != null) args.push('--chunk-size-limit', String(chunkSizeLimit));
+  if (chunkTime != null) args.push('--chunk-time', String(chunkTime));
+  args.push(dropNewTable ? '--drop-new-table' : '--nodrop-new-table');
+  args.push(dropOldTable ? '--drop-old-table' : '--nodrop-old-table');
+  args.push(dropTriggers ? '--drop-triggers' : '--nodrop-triggers');
+  args.push(checkUniqueKeyChange ? '--check-unique-key-change' : '--nocheck-unique-key-change');
+  if (maxLag != null) args.push('--max-lag', String(maxLag));
   return args;
 }
 
@@ -118,7 +152,24 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     maxLoad,
     criticalLoad,
     alterForeignKeysMethod = 'auto',
-    ptoscPath
+    ptoscPath,
+    analyzeBeforeSwap = true,
+    checkAlter = true,
+    checkForeignKeys = true,
+    checkInterval,
+    checkPlan = true,
+    checkReplicationFilters = true,
+    checkReplicaLag = false,
+    chunkIndex,
+    chunkIndexColumns,
+    chunkSize = 1000,
+    chunkSizeLimit = 4.0,
+    chunkTime = 0.5,
+    dropNewTable = true,
+    dropOldTable = true,
+    dropTriggers = true,
+    checkUniqueKeyChange = true,
+    maxLag = 25
   } = options;
 
   if (maxLoad !== undefined && !Number.isInteger(maxLoad)) {
@@ -126,6 +177,24 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   }
   if (criticalLoad !== undefined && !Number.isInteger(criticalLoad)) {
     throw new TypeError(`criticalLoad must be an integer, got ${typeof criticalLoad}`);
+  }
+  if (checkInterval !== undefined && !Number.isInteger(checkInterval)) {
+    throw new TypeError(`checkInterval must be an integer, got ${typeof checkInterval}`);
+  }
+  if (chunkIndexColumns !== undefined && !Number.isInteger(chunkIndexColumns)) {
+    throw new TypeError(`chunkIndexColumns must be an integer, got ${typeof chunkIndexColumns}`);
+  }
+  if (chunkSize !== undefined && !Number.isInteger(chunkSize)) {
+    throw new TypeError(`chunkSize must be an integer, got ${typeof chunkSize}`);
+  }
+  if (chunkSizeLimit !== undefined && typeof chunkSizeLimit !== 'number') {
+    throw new TypeError(`chunkSizeLimit must be a number, got ${typeof chunkSizeLimit}`);
+  }
+  if (chunkTime !== undefined && typeof chunkTime !== 'number') {
+    throw new TypeError(`chunkTime must be a number, got ${typeof chunkTime}`);
+  }
+  if (maxLag !== undefined && !Number.isInteger(maxLag)) {
+    throw new TypeError(`maxLag must be an integer, got ${typeof maxLag}`);
   }
   if (!VALID_FOREIGN_KEYS_METHODS.includes(alterForeignKeysMethod)) {
     throw new TypeError(
@@ -151,7 +220,24 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       socketPath: conn.socketPath,
       maxLoad,
       criticalLoad,
-      dryRun: true
+      dryRun: true,
+      analyzeBeforeSwap,
+      checkAlter,
+      checkForeignKeys,
+      checkInterval,
+      checkPlan,
+      checkReplicationFilters,
+      checkReplicaLag,
+      chunkIndex,
+      chunkIndexColumns,
+      chunkSize,
+      chunkSizeLimit,
+      chunkTime,
+      dropNewTable,
+      dropOldTable,
+      dropTriggers,
+      checkUniqueKeyChange,
+      maxLag
     }),
     envPassword: usedPassword
   });
@@ -171,7 +257,24 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       socketPath: conn.socketPath,
       maxLoad,
       criticalLoad,
-      dryRun: false
+      dryRun: false,
+      analyzeBeforeSwap,
+      checkAlter,
+      checkForeignKeys,
+      checkInterval,
+      checkPlan,
+      checkReplicationFilters,
+      checkReplicaLag,
+      chunkIndex,
+      chunkIndexColumns,
+      chunkSize,
+      chunkSizeLimit,
+      chunkTime,
+      dropNewTable,
+      dropOldTable,
+      dropTriggers,
+      checkUniqueKeyChange,
+      maxLag
     }),
     envPassword: usedPassword
   });
