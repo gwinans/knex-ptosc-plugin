@@ -21,8 +21,9 @@ they can be executed with minimal locking and downtime.
   are passed directly to the pt-osc binary.
 - **Password safety**: The database password is passed via `MYSQL_PWD`
   environment variable (never on the command line or in logs).
-- **Atomic migration lock**: Uses Knex’s `knex_migrations_lock` row safely to
-  prevent concurrent schema changes.
+- **Atomic migration lock**: Uses Knex’s migrations lock row (`knex_migrations_lock` by default) to
+  prevent concurrent schema changes. Table names can be customized with `migrationsTable`
+  and `migrationsLockTable`.
 - **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
 - **Full ALTER support**: Works with direct ALTER strings or with Knex’s
   `.alterTable()` builder syntax.
@@ -111,6 +112,8 @@ The builder version will:
 | `dropTriggers`           | `boolean`                                                  | `true`                      | `--drop-triggers` or `--nodrop-triggers`                |
 | `checkUniqueKeyChange`   | `boolean`                                                  | `true`                      | `--check-unique-key-change` or `--nocheck-unique-key-change` |
 | `maxLag`                 | `number`                                                   | `25`                        | Passed to `--max-lag`                                   |
+| `migrationsTable`        | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks |
+| `migrationsLockTable`    | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock |
 
 ---
 

@@ -24,6 +24,8 @@ export interface PtoscOptions {
   checkUniqueKeyChange?: boolean;
   maxLag?: number;
   logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
+  migrationsTable?: string;
+  migrationsLockTable?: string;
 }
 
 /**
