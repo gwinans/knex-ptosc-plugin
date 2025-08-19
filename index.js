@@ -101,7 +101,7 @@ function buildPtoscArgs({
   ];
   if (port != null) args.push('--port', String(port));
   if (socketPath) args.push('--socket', socketPath);
-  if (maxLoad != null) args.push('--max-load', `Threads_connected=${maxLoad}`);
+  if (maxLoad != null) args.push('--max-load', `Threads_running=${maxLoad}`);
   if (criticalLoad != null) args.push('--critical-load', `Threads_running=${criticalLoad}`);
   args.push(analyzeBeforeSwap ? '--analyze-before-swap' : '--noanalyze-before-swap');
   args.push(checkAlter ? '--check-alter' : '--nocheck-alter');
