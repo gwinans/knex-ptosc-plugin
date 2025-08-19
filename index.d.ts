@@ -27,6 +27,7 @@ export interface PtoscOptions {
   maxLag?: number;
   maxBuffer?: number;
   logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
+  onProgress?: (pct: number) => void;
   migrationsTable?: string;
   migrationsLockTable?: string;
 }

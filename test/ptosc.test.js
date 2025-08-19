@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import child from 'child_process';
+import { PassThrough } from 'stream';
+import { EventEmitter } from 'events';
 import { alterTableWithBuilder } from '../index.js';
 
 function createKnex(updateMock) {
@@ -20,15 +22,24 @@ function createKnex(updateMock) {
 }
 
 describe('knex-ptosc-plugin', () => {
-  let execFileSpy;
+  let spawnSpy;
 
-    beforeEach(() => {
-      execFileSpy = vi
-        .spyOn(child, 'execFile')
-        .mockImplementation((cmd, args, opts, cb) => {
-          cb(null, 'ok', '');
-        });
+  beforeEach(() => {
+    spawnSpy = vi.spyOn(child, 'spawn').mockImplementation(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stdout.emit('data', 'ok');
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
     });
+  });
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -37,7 +48,7 @@ describe('knex-ptosc-plugin', () => {
   it('passes --alter as a separate arg (no shell quoting)', async () => {
     const knex = createKnex();
     await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {});
-    const args = execFileSpy.mock.calls[0][1];
+    const args = spawnSpy.mock.calls[0][1];
     expect(args[0]).toBe('--alter');
     expect(args[1]).toContain('ADD COLUMN `age` INT');
   });
@@ -45,7 +56,7 @@ describe('knex-ptosc-plugin', () => {
   it('extracts ALTER clause from builder SQL and runs twice (dry + exec)', async () => {
     const knex = createKnex();
     await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {});
-    expect(execFileSpy).toHaveBeenCalledTimes(2); // dry-run + execute
+    expect(spawnSpy).toHaveBeenCalledTimes(2); // dry-run + execute
   });
 
   it('supports additional pt-osc flags', async () => {
@@ -56,7 +67,7 @@ describe('knex-ptosc-plugin', () => {
       maxLag: 10,
       chunkSize: 2000
     });
-    const args = execFileSpy.mock.calls[0][1];
+    const args = spawnSpy.mock.calls[0][1];
     expect(args).toContain('--noanalyze-before-swap');
     expect(args).toContain('--check-replica-lag');
     const lagIdx = args.indexOf('--max-lag');
@@ -73,7 +84,7 @@ describe('knex-ptosc-plugin', () => {
       criticalLoad: 50,
       criticalLoadMetric: 'Threads_running'
     });
-    const args = execFileSpy.mock.calls[0][1];
+    const args = spawnSpy.mock.calls[0][1];
     const maxIdx = args.indexOf('--max-load');
     expect(args[maxIdx + 1]).toBe('Threads_connected=100');
     const criticalIdx = args.indexOf('--critical-load');
@@ -91,20 +102,51 @@ describe('knex-ptosc-plugin', () => {
 
     it('surfaces pt-osc errors with code and output', async () => {
       const knex = createKnex();
-      execFileSpy.mockImplementation((cmd, args, opts, cb) => {
-        const err = new Error('boom');
-        err.code = 42;
-        cb(err, 'out', 'err');
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.emit('data', 'out');
+          stderr.emit('data', 'err');
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 42);
+        });
+        return proc;
       });
       await expect(
         alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {})
       ).rejects.toMatchObject({ code: 42, stdout: 'out', stderr: 'err' });
     });
 
-    it('passes maxBuffer to execFile', async () => {
+    it('passes maxBuffer to spawn', async () => {
       const knex = createKnex();
       await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });
-      expect(execFileSpy.mock.calls[0][2].maxBuffer).toBe(1024);
+      expect(spawnSpy.mock.calls[0][2].maxBuffer).toBe(1024);
+    });
+
+    it('emits progress updates', async () => {
+      const knex = createKnex();
+      const onProgress = vi.fn();
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.emit('data', 'Processing 12.5% complete');
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+      await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { onProgress });
+      expect(onProgress).toHaveBeenCalledWith(12.5);
     });
 
     it('logs and rethrows errors when releasing the lock', async () => {

@@ -141,6 +141,7 @@ async function runPtoscProcess({
   envPassword,
   logger = console,
   maxBuffer = 10 * 1024 * 1024,
+  onProgress,
 }) {
   const env = { ...process.env };
   if (envPassword) env.MYSQL_PWD = String(envPassword);
@@ -148,13 +149,76 @@ async function runPtoscProcess({
   logCommand(ptoscPath, args, logger);
 
   await new Promise((resolve, reject) => {
-    childProcess.execFile(ptoscPath, args, { env, maxBuffer }, (err, stdout = '', stderr = '') => {
-      if (stdout) logger.log(stdout);
-      if (stderr) logger.error(stderr);
-      if (err) {
-        logger.error(`pt-online-schema-change failed with code ${err.code}`);
-        const error = new Error(err.message || 'pt-online-schema-change failed');
-        error.code = err.code;
+    const child = childProcess.spawn(ptoscPath, args, { env, maxBuffer });
+
+    let stdout = '';
+    let stderr = '';
+    let total = 0;
+    const pctRegex = /\b(\d{1,3}(?:\.\d+)?)%/;
+    let stdoutLine = '';
+    let stderrLine = '';
+
+    function handleChunk(chunk, isErr) {
+      const str = chunk.toString();
+      total += Buffer.byteLength(str);
+      if (total > maxBuffer) {
+        child.kill();
+        const error = new Error('pt-online-schema-change maxBuffer exceeded');
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return reject(error);
+      }
+
+      const lines = (isErr ? stderrLine : stdoutLine) + str;
+      const split = lines.split(/\r?\n/);
+      if (isErr) {
+        stderrLine = split.pop();
+        split.forEach(line => {
+          if (!line) return;
+          logger.error(line);
+          const m = line.match(pctRegex);
+          if (m && onProgress) onProgress(parseFloat(m[1]));
+        });
+        stderr += str;
+      } else {
+        stdoutLine = split.pop();
+        split.forEach(line => {
+          if (!line) return;
+          logger.log(line);
+          const m = line.match(pctRegex);
+          if (m && onProgress) onProgress(parseFloat(m[1]));
+        });
+        stdout += str;
+      }
+    }
+
+    child.stdout && child.stdout.on('data', (c) => handleChunk(c, false));
+    child.stderr && child.stderr.on('data', (c) => handleChunk(c, true));
+
+    child.on('error', (err) => {
+      logger.error(`pt-online-schema-change failed with code ${err.code}`);
+      const error = new Error(err.message || 'pt-online-schema-change failed');
+      error.code = err.code;
+      error.stdout = stdout;
+      error.stderr = stderr;
+      reject(error);
+    });
+
+    child.on('close', (code) => {
+      if (stdoutLine) {
+        logger.log(stdoutLine);
+        const m = stdoutLine.match(pctRegex);
+        if (m && onProgress) onProgress(parseFloat(m[1]));
+      }
+      if (stderrLine) {
+        logger.error(stderrLine);
+        const m = stderrLine.match(pctRegex);
+        if (m && onProgress) onProgress(parseFloat(m[1]));
+      }
+      if (code) {
+        logger.error(`pt-online-schema-change failed with code ${code}`);
+        const error = new Error('pt-online-schema-change failed');
+        error.code = code;
         error.stdout = stdout;
         error.stderr = stderr;
         return reject(error);
@@ -195,7 +259,8 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     checkUniqueKeyChange = true,
     maxLag = 25,
     maxBuffer,
-    logger = console
+    logger = console,
+    onProgress
   } = options;
 
   if (maxLoad !== undefined && (!Number.isInteger(maxLoad) || maxLoad <= 0)) {
@@ -272,7 +337,8 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     }),
       envPassword: usedPassword,
       logger,
-      maxBuffer
+      maxBuffer,
+      onProgress
     });
 
   // Execute
@@ -313,7 +379,8 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     }),
       envPassword: usedPassword,
       logger,
-      maxBuffer
+      maxBuffer,
+      onProgress
     });
   }
 
