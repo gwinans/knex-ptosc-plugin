@@ -1,5 +1,9 @@
 # knex-ptosc-plugin
 
+## AI Disclosure
+
+An LLM (GPT-5) was used heavily in the creation of this plugin.
+
 ## WARNING
 
 This code is a very early swing at extending Knex to use
@@ -21,9 +25,10 @@ they can be executed with minimal locking and downtime.
   are passed directly to the pt-osc binary.
 - **Password safety**: The database password is passed via `MYSQL_PWD`
   environment variable (never on the command line or in logs).
-- **Atomic migration lock**: Uses Knex’s migrations lock row (`knex_migrations_lock` by default) to
-  prevent concurrent schema changes. Table names can be customized with `migrationsTable`
-  and `migrationsLockTable`.
+- **Atomic migration lock**: Uses Knex’s migrations lock row
+  (`knex_migrations_lock` by default) to prevent concurrent schema changes.
+  Table names can be customized with `migrationsTable` and
+  `migrationsLockTable`.
 - **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
 - **Full ALTER support**: Works with direct ALTER strings or with Knex’s
   `.alterTable()` builder syntax.
@@ -88,32 +93,32 @@ The builder version will:
 
 ## Options
 
-| Option                   | Type                                                       | Default                     | Description                                              |
-| ------------------------ | ---------------------------------------------------------- | --------------------------- | -------------------------------------------------------- |
-| `password`               | `string`                                                   | from Knex connection        | Override DB password; will be passed via `MYSQL_PWD` env |
-| `maxLoad`                | `number`                                                   | `undefined`                 | Passed to `--max-load` (e.g. `Threads_connected=150`)    |
-| `criticalLoad`           | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)  |
-| `alterForeignKeysMethod` | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                  |
-| `ptoscPath`              | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                    |
-| `analyzeBeforeSwap`      | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`    |
-| `checkAlter`             | `boolean`                                                  | `true`                      | `--check-alter` or `--nocheck-alter`                    |
-| `checkForeignKeys`       | `boolean`                                                  | `true`                      | `--check-foreign-keys` or `--nocheck-foreign-keys`      |
-| `checkInterval`          | `number`                                                   | `undefined`                 | Passed to `--check-interval`                             |
-| `checkPlan`              | `boolean`                                                  | `true`                      | `--check-plan` or `--nocheck-plan`                      |
-| `checkReplicationFilters`| `boolean`                                                  | `true`                      | `--check-replication-filters` or `--nocheck-replication-filters` |
-| `checkReplicaLag`        | `boolean`                                                  | `false`                     | Adds `--check-replica-lag`                               |
-| `chunkIndex`             | `string`                                                   | `undefined`                 | Passed to `--chunk-index`                                |
-| `chunkIndexColumns`      | `number`                                                   | `undefined`                 | Passed to `--chunk-index-columns`                        |
-| `chunkSize`              | `number`                                                   | `1000`                      | Passed to `--chunk-size`                                 |
-| `chunkSizeLimit`         | `number`                                                   | `4.0`                       | Passed to `--chunk-size-limit`                           |
-| `chunkTime`              | `number`                                                   | `0.5`                       | Passed to `--chunk-time`                                 |
-| `dropNewTable`           | `boolean`                                                  | `true`                      | `--drop-new-table` or `--nodrop-new-table`              |
-| `dropOldTable`           | `boolean`                                                  | `true`                      | `--drop-old-table` or `--nodrop-old-table`              |
-| `dropTriggers`           | `boolean`                                                  | `true`                      | `--drop-triggers` or `--nodrop-triggers`                |
-| `checkUniqueKeyChange`   | `boolean`                                                  | `true`                      | `--check-unique-key-change` or `--nocheck-unique-key-change` |
-| `maxLag`                 | `number`                                                   | `25`                        | Passed to `--max-lag`                                   |
-| `migrationsTable`        | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks |
-| `migrationsLockTable`    | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock |
+| Option                    | Type                                                       | Default                     | Description                                                      |
+| ------------------------- | ---------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------- |
+| `password`                | `string`                                                   | from Knex connection        | Override DB password; will be passed via `MYSQL_PWD` env         |
+| `maxLoad`                 | `number`                                                   | `undefined`                 | Passed to `--max-load` (e.g. `Threads_connected=150`)            |
+| `criticalLoad`            | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)          |
+| `alterForeignKeysMethod`  | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                          |
+| `ptoscPath`               | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                            |
+| `analyzeBeforeSwap`       | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`             |
+| `checkAlter`              | `boolean`                                                  | `true`                      | `--check-alter` or `--nocheck-alter`                             |
+| `checkForeignKeys`        | `boolean`                                                  | `true`                      | `--check-foreign-keys` or `--nocheck-foreign-keys`               |
+| `checkInterval`           | `number`                                                   | `undefined`                 | Passed to `--check-interval`                                     |
+| `checkPlan`               | `boolean`                                                  | `true`                      | `--check-plan` or `--nocheck-plan`                               |
+| `checkReplicationFilters` | `boolean`                                                  | `true`                      | `--check-replication-filters` or `--nocheck-replication-filters` |
+| `checkReplicaLag`         | `boolean`                                                  | `false`                     | Adds `--check-replica-lag`                                       |
+| `chunkIndex`              | `string`                                                   | `undefined`                 | Passed to `--chunk-index`                                        |
+| `chunkIndexColumns`       | `number`                                                   | `undefined`                 | Passed to `--chunk-index-columns`                                |
+| `chunkSize`               | `number`                                                   | `1000`                      | Passed to `--chunk-size`                                         |
+| `chunkSizeLimit`          | `number`                                                   | `4.0`                       | Passed to `--chunk-size-limit`                                   |
+| `chunkTime`               | `number`                                                   | `0.5`                       | Passed to `--chunk-time`                                         |
+| `dropNewTable`            | `boolean`                                                  | `true`                      | `--drop-new-table` or `--nodrop-new-table`                       |
+| `dropOldTable`            | `boolean`                                                  | `true`                      | `--drop-old-table` or `--nodrop-old-table`                       |
+| `dropTriggers`            | `boolean`                                                  | `true`                      | `--drop-triggers` or `--nodrop-triggers`                         |
+| `checkUniqueKeyChange`    | `boolean`                                                  | `true`                      | `--check-unique-key-change` or `--nocheck-unique-key-change`     |
+| `maxLag`                  | `number`                                                   | `25`                        | Passed to `--max-lag`                                            |
+| `migrationsTable`         | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks             |
+| `migrationsLockTable`     | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock    |
 
 ---
 
