@@ -71,7 +71,9 @@ function buildPtoscArgs({
   port,
   socketPath,
   maxLoad,
+  maxLoadMetric = 'Threads_running',
   criticalLoad,
+  criticalLoadMetric = 'Threads_running',
   dryRun,
   analyzeBeforeSwap = true,
   checkAlter = true,
@@ -101,8 +103,8 @@ function buildPtoscArgs({
   ];
   if (port != null) args.push('--port', String(port));
   if (socketPath) args.push('--socket', socketPath);
-  if (maxLoad != null) args.push('--max-load', `Threads_running=${maxLoad}`);
-  if (criticalLoad != null) args.push('--critical-load', `Threads_running=${criticalLoad}`);
+  if (maxLoad != null) args.push('--max-load', `${maxLoadMetric}=${maxLoad}`);
+  if (criticalLoad != null) args.push('--critical-load', `${criticalLoadMetric}=${criticalLoad}`);
   args.push(analyzeBeforeSwap ? '--analyze-before-swap' : '--noanalyze-before-swap');
   args.push(checkAlter ? '--check-alter' : '--nocheck-alter');
   args.push(checkForeignKeys ? '--check-foreign-keys' : '--nocheck-foreign-keys');
@@ -166,7 +168,9 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   const {
     password,
     maxLoad,
+    maxLoadMetric,
     criticalLoad,
+    criticalLoadMetric,
     alterForeignKeysMethod = 'auto',
     ptoscPath,
     analyzeBeforeSwap = true,
@@ -240,7 +244,9 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       port: conn.port,
       socketPath: conn.socketPath,
       maxLoad,
+      maxLoadMetric,
       criticalLoad,
+      criticalLoadMetric,
       dryRun: true,
       analyzeBeforeSwap,
       checkAlter,
@@ -279,7 +285,9 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       port: conn.port,
       socketPath: conn.socketPath,
       maxLoad,
+      maxLoadMetric,
       criticalLoad,
+      criticalLoadMetric,
       dryRun: false,
       analyzeBeforeSwap,
       checkAlter,

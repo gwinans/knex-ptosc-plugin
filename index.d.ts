@@ -3,7 +3,9 @@ import type { Knex } from 'knex';
 export interface PtoscOptions {
   password?: string;
   maxLoad?: number;
+  maxLoadMetric?: string;
   criticalLoad?: number;
+  criticalLoadMetric?: string;
   alterForeignKeysMethod?: 'auto' | 'rebuild_constraints' | 'drop_swap' | 'none';
   ptoscPath?: string;
   analyzeBeforeSwap?: boolean;
@@ -21,13 +23,13 @@ export interface PtoscOptions {
   dropNewTable?: boolean;
   dropOldTable?: boolean;
   dropTriggers?: boolean;
-    checkUniqueKeyChange?: boolean;
-    maxLag?: number;
-    maxBuffer?: number;
-    logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
-    migrationsTable?: string;
-    migrationsLockTable?: string;
-  }
+  checkUniqueKeyChange?: boolean;
+  maxLag?: number;
+  maxBuffer?: number;
+  logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
+  migrationsTable?: string;
+  migrationsLockTable?: string;
+}
 
 /**
  * Public API: ONLY builder-based alters (no raw SQL).
