@@ -22,13 +22,13 @@ function createKnex() {
 describe('knex-ptosc-plugin', () => {
   let execFileSpy;
 
-  beforeEach(() => {
-    execFileSpy = vi
-      .spyOn(child, 'execFile')
-      .mockImplementation((cmd, args, opts, cb) => {
-        cb(null, 'ok', '');
-      });
-  });
+    beforeEach(() => {
+      execFileSpy = vi
+        .spyOn(child, 'execFile')
+        .mockImplementation((cmd, args, opts, cb) => {
+          cb(null, 'ok', '');
+        });
+    });
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -65,12 +65,30 @@ describe('knex-ptosc-plugin', () => {
     expect(args[sizeIdx + 1]).toBe('2000');
   });
 
-  it('uses a custom logger when provided', async () => {
-    const knex = createKnex();
-    const logger = { log: vi.fn(), error: vi.fn() };
-    const consoleSpy = vi.spyOn(console, 'log');
-    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger });
-    expect(logger.log).toHaveBeenCalled();
-    expect(consoleSpy).not.toHaveBeenCalled();
+    it('uses a custom logger when provided', async () => {
+      const knex = createKnex();
+      const logger = { log: vi.fn(), error: vi.fn() };
+      const consoleSpy = vi.spyOn(console, 'log');
+      await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger });
+      expect(logger.log).toHaveBeenCalled();
+      expect(consoleSpy).not.toHaveBeenCalled();
+    });
+
+    it('surfaces pt-osc errors with code and output', async () => {
+      const knex = createKnex();
+      execFileSpy.mockImplementation((cmd, args, opts, cb) => {
+        const err = new Error('boom');
+        err.code = 42;
+        cb(err, 'out', 'err');
+      });
+      await expect(
+        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {})
+      ).rejects.toMatchObject({ code: 42, stdout: 'out', stderr: 'err' });
+    });
+
+    it('passes maxBuffer to execFile', async () => {
+      const knex = createKnex();
+      await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });
+      expect(execFileSpy.mock.calls[0][2].maxBuffer).toBe(1024);
+    });
   });
-});

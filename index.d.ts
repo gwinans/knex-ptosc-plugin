@@ -21,12 +21,13 @@ export interface PtoscOptions {
   dropNewTable?: boolean;
   dropOldTable?: boolean;
   dropTriggers?: boolean;
-  checkUniqueKeyChange?: boolean;
-  maxLag?: number;
-  logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
-  migrationsTable?: string;
-  migrationsLockTable?: string;
-}
+    checkUniqueKeyChange?: boolean;
+    maxLag?: number;
+    maxBuffer?: number;
+    logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
+    migrationsTable?: string;
+    migrationsLockTable?: string;
+  }
 
 /**
  * Public API: ONLY builder-based alters (no raw SQL).
