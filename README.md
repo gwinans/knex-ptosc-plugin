@@ -81,6 +81,10 @@ await alterTableWithBuilder(knex, "users", (t) => {
 });
 ```
 
+By default, load thresholds monitor the `Threads_running` metric. Use
+`maxLoadMetric` and `criticalLoadMetric` to override the metric names if
+needed.
+
 The builder version will:
 
 - Compile the Knex schema change to SQL (including bindings)
@@ -97,7 +101,9 @@ The builder version will:
 | ------------------------- | ---------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------- |
 | `password`                | `string`                                                   | from Knex connection        | Override DB password; will be passed via `MYSQL_PWD` env         |
 | `maxLoad`                 | `number`                                                   | `undefined`                 | Passed to `--max-load` (e.g. `Threads_connected=150`)            |
+| `maxLoadMetric`           | `string`                                                   | `'Threads_running'`         | Metric name used in `--max-load` (e.g. `Threads_connected`)      |
 | `criticalLoad`            | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)          |
+| `criticalLoadMetric`      | `string`                                                   | `'Threads_running'`         | Metric name used in `--critical-load` (e.g. `Threads_running`)   |
 | `alterForeignKeysMethod`  | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                          |
 | `ptoscPath`               | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                            |
 | `analyzeBeforeSwap`       | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`             |

@@ -65,6 +65,21 @@ describe('knex-ptosc-plugin', () => {
     expect(args[sizeIdx + 1]).toBe('2000');
   });
 
+  it('passes custom load metric names', async () => {
+    const knex = createKnex();
+    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {
+      maxLoad: 100,
+      maxLoadMetric: 'Threads_connected',
+      criticalLoad: 50,
+      criticalLoadMetric: 'Threads_running'
+    });
+    const args = execFileSpy.mock.calls[0][1];
+    const maxIdx = args.indexOf('--max-load');
+    expect(args[maxIdx + 1]).toBe('Threads_connected=100');
+    const criticalIdx = args.indexOf('--critical-load');
+    expect(args[criticalIdx + 1]).toBe('Threads_running=50');
+  });
+
     it('uses a custom logger when provided', async () => {
       const knex = createKnex();
       const logger = { log: vi.fn(), error: vi.fn() };
