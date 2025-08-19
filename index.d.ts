@@ -2,10 +2,10 @@ import type { Knex } from 'knex';
 
 export interface PtoscOptions {
   password?: string;
-  maxLoad?: number;          // Threads_connected limit
-  criticalLoad?: number;     // Threads_running limit
+  maxLoad?: number;
+  criticalLoad?: number;
   alterForeignKeysMethod?: 'auto' | 'rebuild_constraints' | 'drop_swap' | 'none';
-  ptoscPath?: string;        // custom path to pt-online-schema-change
+  ptoscPath?: string;
   analyzeBeforeSwap?: boolean;
   checkAlter?: boolean;
   checkForeignKeys?: boolean;
