@@ -190,32 +190,32 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     logger = console
   } = options;
 
-  if (maxLoad !== undefined && !Number.isInteger(maxLoad)) {
-    throw new TypeError(`maxLoad must be an integer, got ${typeof maxLoad}`);
+  if (maxLoad !== undefined && (!Number.isInteger(maxLoad) || maxLoad <= 0)) {
+    throw new TypeError(`maxLoad must be a positive integer, got ${maxLoad}`);
   }
-  if (criticalLoad !== undefined && !Number.isInteger(criticalLoad)) {
-    throw new TypeError(`criticalLoad must be an integer, got ${typeof criticalLoad}`);
+  if (criticalLoad !== undefined && (!Number.isInteger(criticalLoad) || criticalLoad <= 0)) {
+    throw new TypeError(`criticalLoad must be a positive integer, got ${criticalLoad}`);
   }
-  if (checkInterval !== undefined && !Number.isInteger(checkInterval)) {
-    throw new TypeError(`checkInterval must be an integer, got ${typeof checkInterval}`);
+  if (checkInterval !== undefined && (!Number.isInteger(checkInterval) || checkInterval <= 0)) {
+    throw new TypeError(`checkInterval must be a positive integer, got ${checkInterval}`);
   }
-  if (chunkIndexColumns !== undefined && !Number.isInteger(chunkIndexColumns)) {
-    throw new TypeError(`chunkIndexColumns must be an integer, got ${typeof chunkIndexColumns}`);
+  if (chunkIndexColumns !== undefined && (!Number.isInteger(chunkIndexColumns) || chunkIndexColumns <= 0)) {
+    throw new TypeError(`chunkIndexColumns must be a positive integer, got ${chunkIndexColumns}`);
   }
-  if (chunkSize !== undefined && !Number.isInteger(chunkSize)) {
-    throw new TypeError(`chunkSize must be an integer, got ${typeof chunkSize}`);
+  if (chunkSize !== undefined && (!Number.isInteger(chunkSize) || chunkSize <= 0)) {
+    throw new TypeError(`chunkSize must be a positive integer, got ${chunkSize}`);
   }
-  if (chunkSizeLimit !== undefined && typeof chunkSizeLimit !== 'number') {
-    throw new TypeError(`chunkSizeLimit must be a number, got ${typeof chunkSizeLimit}`);
+  if (chunkSizeLimit !== undefined && (typeof chunkSizeLimit !== 'number' || chunkSizeLimit <= 0)) {
+    throw new TypeError(`chunkSizeLimit must be a positive number, got ${chunkSizeLimit}`);
   }
-  if (chunkTime !== undefined && typeof chunkTime !== 'number') {
-    throw new TypeError(`chunkTime must be a number, got ${typeof chunkTime}`);
+  if (chunkTime !== undefined && (typeof chunkTime !== 'number' || chunkTime <= 0)) {
+    throw new TypeError(`chunkTime must be a positive number, got ${chunkTime}`);
   }
-  if (maxLag !== undefined && !Number.isInteger(maxLag)) {
-    throw new TypeError(`maxLag must be an integer, got ${typeof maxLag}`);
+  if (maxLag !== undefined && (!Number.isInteger(maxLag) || maxLag <= 0)) {
+    throw new TypeError(`maxLag must be a positive integer, got ${maxLag}`);
   }
-  if (maxBuffer !== undefined && !Number.isInteger(maxBuffer)) {
-    throw new TypeError(`maxBuffer must be an integer, got ${typeof maxBuffer}`);
+  if (maxBuffer !== undefined && (!Number.isInteger(maxBuffer) || maxBuffer <= 0)) {
+    throw new TypeError(`maxBuffer must be a positive integer, got ${maxBuffer}`);
   }
   if (!VALID_FOREIGN_KEYS_METHODS.includes(alterForeignKeysMethod)) {
     throw new TypeError(
