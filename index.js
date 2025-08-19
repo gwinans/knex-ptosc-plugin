@@ -129,19 +129,29 @@ function logCommand(ptoscPath, args, logger = console) {
 }
 
 /** Low-level runner (no shell; password via env) */
-async function runPtoscProcess({ ptoscPath = 'pt-online-schema-change', args, envPassword, logger = console }) {
+async function runPtoscProcess({
+  ptoscPath = 'pt-online-schema-change',
+  args,
+  envPassword,
+  logger = console,
+  maxBuffer = 10 * 1024 * 1024,
+}) {
   const env = { ...process.env };
   if (envPassword) env.MYSQL_PWD = String(envPassword);
 
   logCommand(ptoscPath, args, logger);
 
   await new Promise((resolve, reject) => {
-    childProcess.execFile(ptoscPath, args, { env }, (err, stdout, stderr) => {
-      if (stdout) logger.log(stdout.trim());
+    childProcess.execFile(ptoscPath, args, { env, maxBuffer }, (err, stdout = '', stderr = '') => {
+      if (stdout) logger.log(stdout);
+      if (stderr) logger.error(stderr);
       if (err) {
-        const msg = (stderr && stderr.trim()) || err.message || 'pt-online-schema-change failed';
-        if (msg) logger.error(msg);
-        return reject(new Error(msg));
+        logger.error(`pt-online-schema-change failed with code ${err.code}`);
+        const error = new Error(err.message || 'pt-online-schema-change failed');
+        error.code = err.code;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return reject(error);
       }
       resolve();
     });
@@ -176,6 +186,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     dropTriggers = true,
     checkUniqueKeyChange = true,
     maxLag = 25,
+    maxBuffer,
     logger = console
   } = options;
 
@@ -202,6 +213,9 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   }
   if (maxLag !== undefined && !Number.isInteger(maxLag)) {
     throw new TypeError(`maxLag must be an integer, got ${typeof maxLag}`);
+  }
+  if (maxBuffer !== undefined && !Number.isInteger(maxBuffer)) {
+    throw new TypeError(`maxBuffer must be an integer, got ${typeof maxBuffer}`);
   }
   if (!VALID_FOREIGN_KEYS_METHODS.includes(alterForeignKeysMethod)) {
     throw new TypeError(
@@ -246,9 +260,10 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       checkUniqueKeyChange,
       maxLag
     }),
-    envPassword: usedPassword,
-    logger
-  });
+      envPassword: usedPassword,
+      logger,
+      maxBuffer
+    });
 
   // Execute
   logger.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
@@ -284,10 +299,11 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       checkUniqueKeyChange,
       maxLag
     }),
-    envPassword: usedPassword,
-    logger
-  });
-}
+      envPassword: usedPassword,
+      logger,
+      maxBuffer
+    });
+  }
 
 /**
  * Public API: ONLY the Knex builder path.
