@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import child from 'child_process';
 import { alterTableWithBuilder } from '../index.js';
 
-function createKnex() {
+function createKnex(updateMock) {
   const qb = {
     where: vi.fn().mockReturnThis(),
-    update: vi.fn().mockResolvedValue(1)
+    update: updateMock || vi.fn().mockResolvedValue(1)
   };
   const knex = vi.fn().mockReturnValue(qb);
   knex.client = { config: { connection: { database: 'db', host: 'localhost', user: 'root' } } };
@@ -105,5 +105,19 @@ describe('knex-ptosc-plugin', () => {
       const knex = createKnex();
       await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });
       expect(execFileSpy.mock.calls[0][2].maxBuffer).toBe(1024);
+    });
+
+    it('logs and rethrows errors when releasing the lock', async () => {
+      const releaseError = new Error('release failed');
+      const updateMock = vi
+        .fn()
+        .mockResolvedValueOnce(1)
+        .mockRejectedValueOnce(releaseError);
+      const knex = createKnex(updateMock);
+      const logger = { log: vi.fn(), error: vi.fn() };
+      await expect(
+        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger })
+      ).rejects.toThrow('release failed');
+      expect(logger.error).toHaveBeenCalled();
     });
   });

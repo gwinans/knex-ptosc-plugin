@@ -18,6 +18,7 @@ async function acquireMigrationLock(
     migrationsLockTable = 'knex_migrations_lock',
     timeoutMs = 30000,
     intervalMs = 500,
+    logger = console,
   } = {},
 ) {
   const hasMigrationsTable = await knex.schema.hasTable(migrationsTable);
@@ -55,7 +56,10 @@ async function acquireMigrationLock(
       await knex(migrationsLockTable)
         .where({ is_locked: 1 })
         .update({ is_locked: 0 })
-        .catch(() => {});
+        .catch((err) => {
+          logger.error('Failed to release migration lock', err);
+          throw err;
+        });
     },
   };
 }
