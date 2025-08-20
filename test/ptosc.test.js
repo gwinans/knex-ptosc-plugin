@@ -259,8 +259,54 @@ describe('knex-ptosc-plugin', () => {
       await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger });
 
       expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 50%');
-      expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 100%');
+    expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 100%');
+  });
+
+  it('parses statistics output and invokes callback', async () => {
+    const knex = createKnex();
+    const onStats = vi.fn();
+
+    // Dry run
+    spawnSpy.mockImplementationOnce(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
     });
+
+    // Execution with statistics output
+    spawnSpy.mockImplementationOnce(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stdout.emit('data', '# Event Count\n');
+        stdout.emit('data', '# ===== =====\n');
+        stdout.emit('data', '# inserts 5\n');
+        stdout.emit('data', '# updates 2\n');
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
+    });
+
+    const result = await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { statistics: true, onStatistics: onStats });
+
+    const args = spawnSpy.mock.calls[0][1];
+    expect(args).toContain('--statistics');
+    expect(onStats).toHaveBeenCalledWith({ inserts: 5, updates: 2 });
+    expect(result).toEqual([{ inserts: 5, updates: 2 }]);
+  });
 
     it('throws a descriptive error when pt-online-schema-change is missing', async () => {
       const knex = createKnex();

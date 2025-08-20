@@ -125,8 +125,21 @@ The builder version will:
 | `maxLag`                  | `number`                                                   | `25`                        | Passed to `--max-lag`                                            |
 | `maxBuffer`               | `number`                                                   | `10485760`                  | `child_process.execFile` `maxBuffer` in bytes                    |
 | `onProgress`              | `(pct: number) => void`                                    | `undefined`                 | Callback for progress percentage parsed from output; logs include pt-osc ETA when available |
+| `statistics`              | `boolean`                                                  | `false`                     | Adds `--statistics`; collect internal pt-osc counters            |
+| `onStatistics`            | `(stats: Record<string, number>) => void`                  | `undefined`                 | Invoked with parsed statistics object when `statistics` is true |
 | `migrationsTable`         | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks             |
 | `migrationsLockTable`     | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock    |
+
+### Statistics example
+
+When `statistics: true`, pt-online-schema-change prints internal counters at the end of the run. These are parsed into an object and returned (or sent to `onStatistics`). Example output:
+
+```
+# Event          Count
+# =====          =====
+# chunk-size     1000
+# copy_rows      12345
+```
 
 ---
 
