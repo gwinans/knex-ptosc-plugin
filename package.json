@@ -1,13 +1,14 @@
 {
   "name": "knex-ptosc-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
-  "description": "Knex plugin to run pt-online-schema-change migrations with dry-run support",
+  "description": "Knex plugin to run migrations with ptosc",
   "keywords": [
     "knex",
-    "pt-online-schema-change",
     "migration",
-    "plugin"
+    "plugin",
+    "ptosc",
+    "pt-online-schema-change"
   ],
   "author": "Geoff Winans <geoff.winans@brainfailures.com>",
   "license": "MIT",
