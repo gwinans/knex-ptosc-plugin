@@ -219,5 +219,6 @@ export async function down(knex) {
 ---
 
 ## License
+This project is licensed under the [MIT License](LICENSE).
 
-MIT © 2025 Geoff Winans
+© 2025 Geoff Winans
