@@ -152,6 +152,38 @@ describe('knex-ptosc-plugin', () => {
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('err-line'));
     });
 
+    it('includes trailing output without newline when the command fails', async () => {
+      const knex = createKnex();
+      const logger = { log: vi.fn(), error: vi.fn() };
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.emit('data', 'out1\n');
+          stdout.emit('data', 'out2');
+          stderr.emit('data', 'err1\n');
+          stderr.emit('data', 'err2');
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 1);
+        });
+        return proc;
+      });
+      const prev = process.env.DEBUG;
+      process.env.DEBUG = 'knex-ptosc-plugin';
+      await expect(
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger })
+      ).rejects.toThrow();
+      process.env.DEBUG = prev;
+      const stdoutCall = logger.error.mock.calls.find(c => c[0].startsWith('[PT-OSC] stdout:'));
+      expect(stdoutCall[0]).toContain('out1\nout2');
+      const stderrCall = logger.error.mock.calls.find(c => c[0].startsWith('[PT-OSC] stderr:'));
+      expect(stderrCall[0]).toContain('err1\nerr2');
+    });
+
     it('passes maxBuffer to spawn', async () => {
       const knex = createKnex();
       await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });
