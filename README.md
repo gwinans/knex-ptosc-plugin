@@ -159,6 +159,10 @@ DEBUG=knex-ptosc-plugin npm run migrate
 
 Without `DEBUG`, only high-level progress percentages are logged.
 
+## Testing
+
+Run `npm test` to execute linting and unit tests. Continuous integration also clones the [kpp-test-app](https://github.com/gwinans/kpp-test-app) and runs its migrations against a MySQL instance (`root`/`test`, database `ptosc`) to verify end-to-end behavior.
+
 ---
 
 ## Safety & Security
