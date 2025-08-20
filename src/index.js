@@ -36,7 +36,9 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     maxLag = 25,
     maxBuffer,
     logger = console,
-    onProgress
+    onProgress,
+    statistics = false,
+    onStatistics
   } = options;
 
   if (maxLoad !== undefined && (!Number.isInteger(maxLoad) || maxLoad <= 0)) {
@@ -115,7 +117,8 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       dropOldTable,
       dropTriggers,
       checkUniqueKeyChange,
-      maxLag
+      maxLag,
+      statistics
     }),
     envPassword: usedPassword,
     logger,
@@ -127,7 +130,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   if (debug) {
     logger.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
   }
-  await runPtoscProcess({
+  const { statistics: stats } = await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
       alterSQL: alterClause,
@@ -159,7 +162,8 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       dropOldTable,
       dropTriggers,
       checkUniqueKeyChange,
-      maxLag
+      maxLag,
+      statistics
     }),
     envPassword: usedPassword,
     logger,
@@ -171,8 +175,10 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
         logger.log(msg);
       }
     },
+    onStatistics,
     printCommand: true
   });
+  return statistics ? stats : undefined;
 }
 
 /**
@@ -205,14 +211,17 @@ export async function alterTableWithPtosc(knex, tableName, alterCallback, option
   }
 
   const { release } = await acquireMigrationLock(knex, options);
+  const stats = [];
   try {
     for (const fullAlter of alterStatements) {
       // Extract the clause after: ALTER TABLE <name> <CLAUSE>
       const m = fullAlter.match(/^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i);
       const clause = m ? m[2] : fullAlter.replace(/^ALTER\s+TABLE\s+\S+\s+/i, '');
-      await runAlterClauseWithPtosc(knex, tableName, clause, options);
+      const s = await runAlterClauseWithPtosc(knex, tableName, clause, options);
+      if (s) stats.push(s);
     }
   } finally {
     await release();
   }
+  return stats.length ? stats : undefined;
 }

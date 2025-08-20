@@ -49,7 +49,8 @@ export function buildPtoscArgs({
   dropOldTable = true,
   dropTriggers = true,
   checkUniqueKeyChange = true,
-  maxLag = 25
+  maxLag = 25,
+  statistics = false
 }) {
   const args = [
     '--alter', alterSQL,
@@ -80,6 +81,7 @@ export function buildPtoscArgs({
   args.push(dropTriggers ? '--drop-triggers' : '--nodrop-triggers');
   args.push(checkUniqueKeyChange ? '--check-unique-key-change' : '--nocheck-unique-key-change');
   if (maxLag != null) args.push('--max-lag', String(maxLag));
+  if (statistics) args.push('--statistics');
   return args;
 }
 
@@ -96,6 +98,7 @@ export async function runPtoscProcess({
   logger = console,
   maxBuffer = 10 * 1024 * 1024,
   onProgress,
+  onStatistics,
   printCommand = true,
 }) {
   const debug = isDebugEnabled();
@@ -107,7 +110,7 @@ export async function runPtoscProcess({
     logCommand(resolvedPath, args, logger);
   }
 
-  await new Promise((resolve, reject) => {
+  const result = await new Promise((resolve, reject) => {
     const child = childProcess.spawn(resolvedPath, args, { env, maxBuffer });
 
     let stdout = '';
@@ -182,7 +185,18 @@ export async function runPtoscProcess({
         error.stderr = stderr;
         return reject(error);
       }
-      resolve();
+      const combined = `${stdout}\n${stderr}`;
+      const stats = {};
+      combined.split(/\r?\n/).forEach(line => {
+        const m = line.match(/^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/);
+        if (m) {
+          stats[m[1].trim()] = Number(m[2]);
+        }
+      });
+      const statsCopy = { ...stats };
+      if (onStatistics && Object.keys(statsCopy).length) onStatistics(statsCopy);
+      resolve({ stdout, stderr, statistics: statsCopy });
     });
   });
+  return result;
 }
