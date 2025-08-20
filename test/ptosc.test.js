@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import child from 'child_process';
 import { PassThrough } from 'stream';
 import { EventEmitter } from 'events';
-import { alterTableWithBuilder } from '../index.js';
+import { alterTableWithPtosc } from '../index.js';
 import { acquireMigrationLock } from '../src/lock.js';
 
 function createKnex(updateMock) {
@@ -52,7 +52,7 @@ describe('knex-ptosc-plugin', () => {
 
   it('passes --alter as a separate arg (no shell quoting)', async () => {
     const knex = createKnex();
-    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {});
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {});
     const args = spawnSpy.mock.calls[0][1];
     expect(args[0]).toBe('--alter');
     expect(args[1]).toContain('ADD COLUMN `age` INT');
@@ -60,13 +60,13 @@ describe('knex-ptosc-plugin', () => {
 
   it('extracts ALTER clause from builder SQL and runs twice (dry + exec)', async () => {
     const knex = createKnex();
-    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {});
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {});
     expect(spawnSpy).toHaveBeenCalledTimes(2); // dry-run + execute
   });
 
   it('supports additional pt-osc flags', async () => {
     const knex = createKnex();
-    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {
       analyzeBeforeSwap: false,
       checkReplicaLag: true,
       maxLag: 10,
@@ -83,7 +83,7 @@ describe('knex-ptosc-plugin', () => {
 
   it('passes custom load metric names', async () => {
     const knex = createKnex();
-    await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {
       maxLoad: 100,
       maxLoadMetric: 'Threads_connected',
       criticalLoad: 50,
@@ -100,7 +100,7 @@ describe('knex-ptosc-plugin', () => {
       const knex = createKnex();
       const logger = { log: vi.fn(), error: vi.fn() };
       const consoleSpy = vi.spyOn(console, 'log');
-      await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger });
+      await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger });
       expect(logger.log).toHaveBeenCalled();
       expect(consoleSpy).not.toHaveBeenCalled();
     });
@@ -123,20 +123,20 @@ describe('knex-ptosc-plugin', () => {
         return proc;
       });
       await expect(
-        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, {})
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {})
       ).rejects.toMatchObject({ code: 42, stdout: 'out', stderr: 'err' });
     });
 
     it('passes maxBuffer to spawn', async () => {
       const knex = createKnex();
-      await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });
+      await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });
       expect(spawnSpy.mock.calls[0][2].maxBuffer).toBe(1024);
     });
 
     it('rejects when chunkSize is non-positive', async () => {
       const knex = createKnex();
       await expect(
-        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { chunkSize: 0 })
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { chunkSize: 0 })
       ).rejects.toThrow(/chunkSize must be a positive integer/);
       expect(spawnSpy).not.toHaveBeenCalled();
     });
@@ -144,7 +144,7 @@ describe('knex-ptosc-plugin', () => {
     it('rejects when maxLoad is non-positive', async () => {
       const knex = createKnex();
       await expect(
-        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { maxLoad: -1 })
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { maxLoad: -1 })
       ).rejects.toThrow(/maxLoad must be a positive integer/);
       expect(spawnSpy).not.toHaveBeenCalled();
     });
@@ -152,7 +152,7 @@ describe('knex-ptosc-plugin', () => {
     it('rejects unsupported alterForeignKeysMethod', async () => {
       const knex = createKnex();
       await expect(
-        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { alterForeignKeysMethod: 'invalid' })
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { alterForeignKeysMethod: 'invalid' })
       ).rejects.toThrow(/alterForeignKeysMethod must be one of/);
       expect(spawnSpy).not.toHaveBeenCalled();
     });
@@ -174,7 +174,7 @@ describe('knex-ptosc-plugin', () => {
         });
         return proc;
       });
-      await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { onProgress });
+      await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { onProgress });
       expect(onProgress).toHaveBeenCalledWith(12.5);
     });
 
@@ -182,7 +182,7 @@ describe('knex-ptosc-plugin', () => {
       const knex = createKnex();
       spawnSyncSpy.mockImplementation(() => ({ status: 1, stdout: Buffer.from(''), stderr: Buffer.from('') }));
       await expect(
-        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { ptoscPath: 'pt-online-schema-change-missing' })
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { ptoscPath: 'pt-online-schema-change-missing' })
       ).rejects.toThrow('pt-online-schema-change binary not found');
       expect(spawnSpy).not.toHaveBeenCalled();
     });
@@ -196,7 +196,7 @@ describe('knex-ptosc-plugin', () => {
       const knex = createKnex(updateMock);
       const logger = { log: vi.fn(), error: vi.fn() };
       await expect(
-        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger })
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger })
       ).rejects.toThrow('release failed');
       expect(logger.error).toHaveBeenCalled();
     });

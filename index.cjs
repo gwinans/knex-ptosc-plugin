@@ -1,5 +1,5 @@
 'use strict';
 
 // Bridge to the ESM build; functions remain async Promises.
-module.exports.alterTableWithBuilder = (...args) =>
-  import('./index.js').then(m => m.alterTableWithBuilder(...args));
+module.exports.alterTableWithPtosc = (...args) =>
+  import('./index.js').then(m => m.alterTableWithPtosc(...args));
