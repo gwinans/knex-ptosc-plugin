@@ -3,7 +3,12 @@
   "version": "0.0.10",
   "type": "module",
   "description": "Knex plugin to run pt-online-schema-change migrations with dry-run support",
-  "keywords": ["knex", "pt-online-schema-change", "migration", "plugin"],
+  "keywords": [
+    "knex",
+    "pt-online-schema-change",
+    "migration",
+    "plugin"
+  ],
   "author": "Geoff Winans <geoff.winans@brainfailures.com>",
   "license": "MIT",
   "exports": {
@@ -15,10 +20,14 @@
   },
   "types": "./index.d.ts",
   "scripts": {
-    "test": "vitest run",
+    "lint": "eslint .",
+    "test": "npm run lint && vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
     "vitest": "^2.0.0"
   }
 }
