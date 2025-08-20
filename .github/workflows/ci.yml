@@ -14,21 +14,15 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8
-        env:
-          MYSQL_ROOT_PASSWORD: test
-          MYSQL_DATABASE: ptosc
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptest"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
+      - uses: mirromutth/mysql-action@v1.1
+        with:
+          character set server: 'utf8' # Optional, default value is 'utf8mb4'. The '--character-set-server' option for mysqld
+          collation server: 'utf8_general_ci' # Optional, default value is 'utf8mb4_general_ci'. The '--collation-server' option for mysqld
+          mysql version: '8.0.40' # Optional, default value is "latest". The version of the MySQL
+          mysql database: 'ptosc' # Optional, default value is "test". The specified database which will be create
+          mysql root password: 'test' # Required if "mysql user" is empty, default is empty. The root superuser password
+
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -38,7 +32,12 @@ jobs:
       - name: Install MySQL client and pt-online-schema-change
         run: |
           sudo apt-get update
-          sudo apt-get install -y mysql-client percona-toolkit
+          sudo apt-get install -y mysql-client curl
+          sudo curl -O https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+          sudo apt-get install -y gnupg2 lsb-release ./percona-release_latest.generic_all.deb
+          sudo percona-release enable tools release
+          sudo apt update
+          sudo apt-get install -y percona-toolkit
 
       - name: Wait for MySQL
         run: |
@@ -61,6 +60,7 @@ jobs:
           DB_NAME: ptosc
           DEBUG: knex-ptosc-plugin
         run: |
+          pt-online-schema-change --version
           git clone https://github.com/gwinans/kpp-test-app
           cd kpp-test-app
           npm install
