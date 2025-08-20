@@ -11,6 +11,9 @@
   ],
   "author": "Geoff Winans <geoff.winans@brainfailures.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
