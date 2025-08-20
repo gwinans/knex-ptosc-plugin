@@ -1,5 +1,22 @@
 import childProcess from 'child_process';
 
+const resolvedPtoscPaths = new Map();
+
+/** Ensure pt-online-schema-change is available and return its path */
+export function resolvePtoscPath(ptoscPath = 'pt-online-schema-change') {
+  if (resolvedPtoscPaths.has(ptoscPath)) return resolvedPtoscPaths.get(ptoscPath);
+
+  const { status, stdout } = childProcess.spawnSync('which', [ptoscPath]);
+  if (status !== 0) {
+    throw new Error(
+      `pt-online-schema-change binary not found: ${ptoscPath}. Install Percona Toolkit and ensure pt-online-schema-change is in your PATH.`
+    );
+  }
+  const resolved = stdout.toString().trim();
+  resolvedPtoscPaths.set(ptoscPath, resolved);
+  return resolved;
+}
+
 /** Build pt-osc args array (no shell quoting) */
 export function buildPtoscArgs({
   alterSQL,
@@ -79,13 +96,14 @@ export async function runPtoscProcess({
   maxBuffer = 10 * 1024 * 1024,
   onProgress,
 }) {
+  const resolvedPath = resolvePtoscPath(ptoscPath);
   const env = { ...process.env };
   if (envPassword) env.MYSQL_PWD = String(envPassword);
 
-  logCommand(ptoscPath, args, logger);
+  logCommand(resolvedPath, args, logger);
 
   await new Promise((resolve, reject) => {
-    const child = childProcess.spawn(ptoscPath, args, { env, maxBuffer });
+    const child = childProcess.spawn(resolvedPath, args, { env, maxBuffer });
 
     let stdout = '';
     let stderr = '';

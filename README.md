@@ -173,8 +173,9 @@ export async function down(knex) {
 ## Troubleshooting
 
 - **`pt-online-schema-change: command not found`**\
-  Make sure Percona Toolkit is installed and in your PATH, or pass `ptoscPath`
-  in options.
+  The plugin runs `which pt-online-schema-change` during initialization and
+  will throw if the binary cannot be found. Make sure Percona Toolkit is
+  installed and in your PATH, or pass `ptoscPath` in options.
 
 - **Permission errors**\
   Verify you followed the installation instructions for Knex.
