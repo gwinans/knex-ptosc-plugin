@@ -63,4 +63,4 @@ jobs:
           git clone https://github.com/gwinans/kpp-test-app
           cd kpp-test-app
           npm install
-          ./node_modules/.bin/knex migrate:latest
+          DEBUG=knex:* ./node_modules/.bin/knex migrate:latest
