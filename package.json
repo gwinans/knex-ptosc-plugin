@@ -1,6 +1,6 @@
 {
   "name": "knex-ptosc-plugin",
-  "version": "0.0.10",
+  "version": "0.0.12",
   "type": "module",
   "description": "Knex plugin to run pt-online-schema-change migrations with dry-run support",
   "keywords": [
