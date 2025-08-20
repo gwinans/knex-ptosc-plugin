@@ -61,6 +61,7 @@ jobs:
           DB_NAME: ptosc
           DEBUG: knex-ptosc-plugin
         run: |
+          pt-online-schema-change --version
           git clone https://github.com/gwinans/kpp-test-app
           cd kpp-test-app
           npm install
