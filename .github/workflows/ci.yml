@@ -1,13 +1,18 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '*.md'
+      - '**/*.md'
+      - '.github'
 
 jobs:
   test:
+
     runs-on: ubuntu-latest
+
     services:
       mysql:
         image: mysql:8
@@ -21,26 +26,32 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - name: Install MySQL client and pt-online-schema-change
         run: |
           sudo apt-get update
           sudo apt-get install -y mysql-client percona-toolkit
+
       - name: Wait for MySQL
         run: |
           for i in {1..30}; do
             mysql -h 127.0.0.1 -uroot -ptest -e "SELECT 1" && break
             sleep 1
           done
+
       - name: Install dependencies
         run: npm ci
+
       - name: Run unit tests
         run: npm test
+
       - name: Run test application
         env:
           DB_HOST: 127.0.0.1
@@ -51,6 +62,4 @@ jobs:
           git clone https://github.com/gwinans/kpp-test-app
           cd kpp-test-app
           npm install
-          npm install ../ --no-save
-          npm run migrate
-          npm run rollback
+          ./node_modules/.bin/knex migrate:latest
