@@ -130,6 +130,30 @@ describe('knex-ptosc-plugin', () => {
       expect(spawnSpy.mock.calls[0][2].maxBuffer).toBe(1024);
     });
 
+    it('rejects when chunkSize is non-positive', async () => {
+      const knex = createKnex();
+      await expect(
+        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { chunkSize: 0 })
+      ).rejects.toThrow(/chunkSize must be a positive integer/);
+      expect(spawnSpy).not.toHaveBeenCalled();
+    });
+
+    it('rejects when maxLoad is non-positive', async () => {
+      const knex = createKnex();
+      await expect(
+        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { maxLoad: -1 })
+      ).rejects.toThrow(/maxLoad must be a positive integer/);
+      expect(spawnSpy).not.toHaveBeenCalled();
+    });
+
+    it('rejects unsupported alterForeignKeysMethod', async () => {
+      const knex = createKnex();
+      await expect(
+        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { alterForeignKeysMethod: 'invalid' })
+      ).rejects.toThrow(/alterForeignKeysMethod must be one of/);
+      expect(spawnSpy).not.toHaveBeenCalled();
+    });
+
     it('emits progress updates', async () => {
       const knex = createKnex();
       const onProgress = vi.fn();
