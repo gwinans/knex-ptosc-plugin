@@ -33,9 +33,9 @@ export interface PtoscOptions {
 }
 
 /**
- * Public API: ONLY builder-based alters (no raw SQL).
+ * Public API: builder-based alters (no raw SQL) run through pt-online-schema-change.
  */
-export declare function alterTableWithBuilder(
+export declare function alterTableWithPtosc(
   knex: Knex,
   tableName: string,
   alterCallback: (tableBuilder: Knex.AlterTableBuilder) => void,

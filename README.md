@@ -62,7 +62,7 @@ npm install knex-ptosc-plugin
 Import the plugin.
 
 ```js
-import { alterTableWithBuilder } from "knex-ptosc-plugin";
+import { alterTableWithPtosc } from "knex-ptosc-plugin";
 ```
 
 ---
@@ -72,7 +72,7 @@ import { alterTableWithBuilder } from "knex-ptosc-plugin";
 Build your migration.
 
 ```js
-await alterTableWithBuilder(knex, "users", (t) => {
+await alterTableWithPtosc(knex, "users", (t) => {
   t.string("nickname").nullable();
 }, {
   maxLoad: 150,
@@ -147,10 +147,10 @@ The builder version will:
 ## Example Migration
 
 ```js
-import { alterTableWithBuilder } from "knex-ptosc-plugin";
+import { alterTableWithPtosc } from "knex-ptosc-plugin";
 
 export async function up(knex) {
-  await alterTableWithBuilder(knex, "users", (t) => {
+  await alterTableWithPtosc(knex, "users", (t) => {
     t.string("nickname").nullable();
   }, {
     maxLoad: 150,
@@ -159,7 +159,7 @@ export async function up(knex) {
 }
 
 export async function down(knex) {
-  await alterTableWithBuilder(knex, "users", (t) => {
+  await alterTableWithPtosc(knex, "users", (t) => {
     t.dropColumn("nickname");
   }, {
     maxLoad: 150,

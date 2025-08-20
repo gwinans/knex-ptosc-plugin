@@ -160,11 +160,11 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
 }
 
 /**
- * Public API: ONLY the Knex builder path.
+ * Public API: Knex builder path run through pt-online-schema-change.
  * Compiles the alterTable callback, extracts ALTER statements, applies bindings,
  * and runs each via pt-osc under the migration lock.
  */
-export async function alterTableWithBuilder(knex, tableName, alterCallback, options = {}) {
+export async function alterTableWithPtosc(knex, tableName, alterCallback, options = {}) {
   const builder = knex.schema.alterTable(tableName, alterCallback);
   const compiled = builder.toSQL();
   const stmts = Array.isArray(compiled) ? compiled : [compiled];
