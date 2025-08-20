@@ -3,6 +3,7 @@ import child from 'child_process';
 import { PassThrough } from 'stream';
 import { EventEmitter } from 'events';
 import { alterTableWithBuilder } from '../index.js';
+import { acquireMigrationLock } from '../src/lock.js';
 
 function createKnex(updateMock) {
   const qb = {
@@ -196,5 +197,26 @@ describe('knex-ptosc-plugin', () => {
         alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger })
       ).rejects.toThrow('release failed');
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('throws when migration tables are missing', async () => {
+      const knex = createKnex();
+      knex.schema.hasTable.mockResolvedValue(false);
+      await expect(acquireMigrationLock(knex)).rejects.toThrow(
+        /Required Knex migration tables do not exist/
+      );
+    });
+
+    it('times out if the lock cannot be acquired', async () => {
+      vi.useFakeTimers();
+      const updateMock = vi.fn().mockResolvedValue(0);
+      const knex = createKnex(updateMock);
+      const promise = acquireMigrationLock(knex, { timeoutMs: 1000, intervalMs: 100 });
+      const expectPromise = expect(promise).rejects.toThrow(
+        /Timeout acquiring knex_migrations_lock/
+      );
+      await vi.advanceTimersByTimeAsync(1100);
+      await expectPromise;
+      vi.useRealTimers();
     });
   });
