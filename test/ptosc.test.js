@@ -23,8 +23,10 @@ function createKnex(updateMock) {
 
 describe('knex-ptosc-plugin', () => {
   let spawnSpy;
+  let spawnSyncSpy;
 
   beforeEach(() => {
+    spawnSyncSpy = vi.spyOn(child, 'spawnSync').mockReturnValue({ status: 0, stdout: Buffer.from('/usr/bin/pt-online-schema-change\n') });
     spawnSpy = vi.spyOn(child, 'spawn').mockImplementation(() => {
       const stdout = new PassThrough();
       const stderr = new PassThrough();
@@ -147,6 +149,15 @@ describe('knex-ptosc-plugin', () => {
       });
       await alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { onProgress });
       expect(onProgress).toHaveBeenCalledWith(12.5);
+    });
+
+    it('throws a descriptive error when pt-online-schema-change is missing', async () => {
+      const knex = createKnex();
+      spawnSyncSpy.mockImplementation(() => ({ status: 1, stdout: Buffer.from(''), stderr: Buffer.from('') }));
+      await expect(
+        alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { ptoscPath: 'pt-online-schema-change-missing' })
+      ).rejects.toThrow('pt-online-schema-change binary not found');
+      expect(spawnSpy).not.toHaveBeenCalled();
     });
 
     it('logs and rethrows errors when releasing the lock', async () => {
