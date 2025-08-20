@@ -127,6 +127,31 @@ describe('knex-ptosc-plugin', () => {
       ).rejects.toMatchObject({ code: 42, stdout: 'out', stderr: 'err' });
     });
 
+    it('logs full pt-osc output when the command fails', async () => {
+      const knex = createKnex();
+      const logger = { log: vi.fn(), error: vi.fn() };
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.emit('data', 'out-line\n');
+          stderr.emit('data', 'err-line\n');
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 1);
+        });
+        return proc;
+      });
+      await expect(
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger })
+      ).rejects.toThrow();
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('out-line'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('err-line'));
+    });
+
     it('passes maxBuffer to spawn', async () => {
       const knex = createKnex();
       await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });

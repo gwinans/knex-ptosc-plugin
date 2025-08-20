@@ -158,7 +158,14 @@ export async function runPtoscProcess({
     child.stderr && child.stderr.on('data', (c) => handleChunk(c, true));
 
     child.on('error', (err) => {
+      // Ensure buffered lines are included in logged output
+      if (stdoutLine) stdout += stdoutLine;
+      if (stderrLine) stderr += stderrLine;
+
       logger.error(`pt-online-schema-change failed with code ${err.code}`);
+      if (stdout) logger.error(`[PT-OSC] stdout:\n${stdout}`);
+      if (stderr) logger.error(`[PT-OSC] stderr:\n${stderr}`);
+
       const error = new Error(err.message || 'pt-online-schema-change failed');
       error.code = err.code;
       error.stdout = stdout;
@@ -179,6 +186,9 @@ export async function runPtoscProcess({
       }
       if (code) {
         logger.error(`pt-online-schema-change failed with code ${code}`);
+        if (stdout) logger.error(`[PT-OSC] stdout:\n${stdout}`);
+        if (stderr) logger.error(`[PT-OSC] stderr:\n${stderr}`);
+
         const error = new Error('pt-online-schema-change failed');
         error.code = code;
         error.stdout = stdout;
