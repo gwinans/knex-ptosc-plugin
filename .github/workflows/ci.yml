@@ -60,8 +60,8 @@ jobs:
           DB_PASSWORD: test
           DB_NAME: ptosc
         run: |
-          echo "pt-online-schema-change is located at: $(which pt-online-schema-change)"
           git clone https://github.com/gwinans/kpp-test-app
+          echo "pt-online-schema-change is located at: $(which pt-online-schema-change)"
           cd kpp-test-app
           npm install
           DEBUG=knex-ptosc-plugin ./node_modules/.bin/knex migrate:latest
