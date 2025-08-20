@@ -24,22 +24,24 @@ export interface PtoscOptions {
   dropOldTable?: boolean;
   dropTriggers?: boolean;
   checkUniqueKeyChange?: boolean;
-    maxLag?: number;
-    maxBuffer?: number;
-    logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
-    onProgress?: (pct: number) => void;
-    statistics?: boolean;
-    onStatistics?: (stats: Record<string, number>) => void;
-    migrationsTable?: string;
-    migrationsLockTable?: string;
-  }
+  maxLag?: number;
+  maxBuffer?: number;
+  logger?: { log: (...args: any[]) => void; error: (...args: any[]) => void };
+  onProgress?: (pct: number) => void;
+  statistics?: boolean;
+  onStatistics?: (stats: Record<string, number>) => void;
+  migrationsTable?: string;
+  migrationsLockTable?: string;
+  timeoutMs?: number;
+  intervalMs?: number;
+}
 
 /**
  * Public API: builder-based alters (no raw SQL) run through pt-online-schema-change.
  */
-  export declare function alterTableWithPtosc(
-    knex: Knex,
-    tableName: string,
-    alterCallback: (tableBuilder: Knex.AlterTableBuilder) => void,
-    options?: PtoscOptions
-  ): Promise<Record<string, number>[] | undefined>;
+export declare function alterTableWithPtosc(
+  knex: Knex,
+  tableName: string,
+  alterCallback: (tableBuilder: Knex.AlterTableBuilder) => void,
+  options?: PtoscOptions
+): Promise<Record<string, number>[] | undefined>;

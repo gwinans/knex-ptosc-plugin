@@ -62,7 +62,11 @@ npm install knex-ptosc-plugin
 Import the plugin.
 
 ```js
+// ESM
 import { alterTableWithPtosc } from "knex-ptosc-plugin";
+
+// CommonJS
+const { alterTableWithPtosc } = require("knex-ptosc-plugin");
 ```
 
 ---
@@ -124,11 +128,14 @@ The builder version will:
 | `checkUniqueKeyChange`    | `boolean`                                                  | `true`                      | `--check-unique-key-change` or `--nocheck-unique-key-change`     |
 | `maxLag`                  | `number`                                                   | `25`                        | Passed to `--max-lag`                                            |
 | `maxBuffer`               | `number`                                                   | `10485760`                  | `child_process.execFile` `maxBuffer` in bytes                    |
+| `logger`                  | `{ log: Function, error: Function }`                       | `console`                   | Override default logging methods                                    |
 | `onProgress`              | `(pct: number) => void`                                    | `undefined`                 | Callback for progress percentage parsed from output; logs include pt-osc ETA when available |
 | `statistics`              | `boolean`                                                  | `false`                     | Adds `--statistics`; collect internal pt-osc counters            |
 | `onStatistics`            | `(stats: Record<string, number>) => void`                  | `undefined`                 | Invoked with parsed statistics object when `statistics` is true |
 | `migrationsTable`         | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks             |
 | `migrationsLockTable`     | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock    |
+| `timeoutMs`               | `number`                                                   | `30000`                     | Timeout in ms when acquiring migration lock                       |
+| `intervalMs`              | `number`                                                   | `500`                       | Delay between lock retries in ms                                  |
 
 ### Statistics example
 
@@ -140,6 +147,17 @@ When `statistics: true`, pt-online-schema-change prints internal counters at the
 # chunk-size     1000
 # copy_rows      12345
 ```
+
+## Debugging
+
+Set `DEBUG=knex-ptosc-plugin` to print the full pt-online-schema-change command
+and all output lines.
+
+```sh
+DEBUG=knex-ptosc-plugin npm run migrate
+```
+
+Without `DEBUG`, only high-level progress percentages are logged.
 
 ---
 
