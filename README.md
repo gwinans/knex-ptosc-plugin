@@ -130,7 +130,7 @@ The builder version will:
 | `maxBuffer`               | `number`                                                   | `10485760`                  | `child_process.execFile` `maxBuffer` in bytes                    |
 | `logger`                  | `{ log: Function, error: Function }`                       | `console`                   | Override default logging methods                                    |
 | `onProgress`              | `(pct: number) => void`                                    | `undefined`                 | Callback for progress percentage parsed from output; logs include pt-osc ETA when available |
-| `statistics`              | `boolean`                                                  | `false`                     | Adds `--statistics`; collect internal pt-osc counters            |
+| `statistics`              | `boolean`                                                  | `false`                     | Adds `--statistics`; log and collect internal pt-osc counters   |
 | `onStatistics`            | `(stats: Record<string, number>) => void`                  | `undefined`                 | Invoked with parsed statistics object when `statistics` is true |
 | `migrationsTable`         | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks             |
 | `migrationsLockTable`     | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock    |
@@ -139,7 +139,7 @@ The builder version will:
 
 ### Statistics example
 
-When `statistics: true`, pt-online-schema-change prints internal counters at the end of the run. These are parsed into an object and returned (or sent to `onStatistics`). Example output:
+When `statistics: true`, pt-online-schema-change prints internal counters at the end of the run. These are parsed into an object, logged via the provided logger, and returned (or sent to `onStatistics`). Example output:
 
 ```
 # Event          Count

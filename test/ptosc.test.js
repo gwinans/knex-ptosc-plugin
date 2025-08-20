@@ -265,6 +265,7 @@ describe('knex-ptosc-plugin', () => {
   it('parses statistics output and invokes callback', async () => {
     const knex = createKnex();
     const onStats = vi.fn();
+    const logger = { log: vi.fn(), error: vi.fn() };
 
     // Dry run
     spawnSpy.mockImplementationOnce(() => {
@@ -300,11 +301,12 @@ describe('knex-ptosc-plugin', () => {
       return proc;
     });
 
-    const result = await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { statistics: true, onStatistics: onStats });
+    const result = await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { statistics: true, onStatistics: onStats, logger });
 
     const args = spawnSpy.mock.calls[0][1];
     expect(args).toContain('--statistics');
     expect(onStats).toHaveBeenCalledWith({ inserts: 5, updates: 2 });
+    expect(logger.log).toHaveBeenCalledWith('[PT-OSC] Statistics: inserts=5, updates=2');
     expect(result).toEqual([{ inserts: 5, updates: 2 }]);
   });
 

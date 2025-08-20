@@ -194,7 +194,15 @@ export async function runPtoscProcess({
         }
       });
       const statsCopy = { ...stats };
-      if (onStatistics && Object.keys(statsCopy).length) onStatistics(statsCopy);
+      const hasStats = Object.keys(statsCopy).length > 0;
+      if (hasStats) {
+        logger.log(
+          `[PT-OSC] Statistics: ${Object.entries(statsCopy)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(', ')}`
+        );
+        if (onStatistics) onStatistics(statsCopy);
+      }
       resolve({ stdout, stderr, statistics: statsCopy });
     });
   });
