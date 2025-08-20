@@ -1,8 +1,11 @@
 ## Summary
+
 Provide a brief summary of your changes.
 
-## Testing Notes
-Explain how you tested your changes.
+## Links to Issue(s) this PR resolves (if any):
 
-## Changelog Entry
-- [ ] Added entry to CHANGELOG.md
+- https://github.com/gwinans/knex-ptosc-plug/issues/#
+
+## Testing Notes
+
+Explain how you tested your changes.
