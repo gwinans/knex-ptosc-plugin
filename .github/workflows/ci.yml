@@ -34,10 +34,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mysql-client curl
           sudo curl -O https://repo.percona.com/apt/percona-release_latest.generic_all.deb
-          sudo apt install -y gnupg2 lsb-release ./percona-release_latest.generic_all.deb
+          sudo apt-get install -y gnupg2 lsb-release ./percona-release_latest.generic_all.deb
           sudo percona-release enable tools release
           sudo apt update
-          sudo apt install -y percona-toolkit=3.7.0
+          sudo apt-get install -y percona-toolkit
 
       - name: Wait for MySQL
         run: |
