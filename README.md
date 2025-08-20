@@ -158,6 +158,8 @@ DEBUG=knex-ptosc-plugin npm run migrate
 ```
 
 Without `DEBUG`, only high-level progress percentages are logged.
+If pt-online-schema-change exits with an error, its full stdout and stderr
+are logged regardless of `DEBUG`.
 
 ## Testing
 
