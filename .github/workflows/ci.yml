@@ -60,7 +60,7 @@ jobs:
           DB_PASSWORD: test
           DB_NAME: ptosc
         run: |
-          pt-online-schema-change --help
+          echo "pt-online-schema-change is located at: $(which pt-online-schema-change)"
           git clone https://github.com/gwinans/kpp-test-app
           cd kpp-test-app
           npm install
