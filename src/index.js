@@ -1,5 +1,6 @@
 import { acquireMigrationLock } from './lock.js';
 import { buildPtoscArgs, runPtoscProcess } from './ptosc-runner.js';
+import { isDebugEnabled } from './debug.js';
 
 const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
 
@@ -74,8 +75,14 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   const conn = knex.client.config.connection || {};
   const usedPassword = password ?? conn.password;
 
-  // Dry-run
-  logger.log(`[PT-OSC] Dry-run for ALTER TABLE ${table} ${alterClause}`);
+  const debug = isDebugEnabled();
+
+  if (debug) {
+    logger.log(`[PT-OSC] Dry-run for ALTER TABLE ${table} ${alterClause}`);
+  } else {
+    logger.log(`[PT-OSC] Modifying table ${table}`);
+  }
+
   await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
@@ -110,14 +117,17 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       checkUniqueKeyChange,
       maxLag
     }),
-      envPassword: usedPassword,
-      logger,
-      maxBuffer,
-      onProgress
-    });
+    envPassword: usedPassword,
+    logger,
+    maxBuffer,
+    onProgress,
+    printCommand: debug
+  });
 
-  // Execute
-  logger.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
+  if (debug) {
+    logger.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
+  }
+
   await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
@@ -152,11 +162,15 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       checkUniqueKeyChange,
       maxLag
     }),
-      envPassword: usedPassword,
-      logger,
-      maxBuffer,
-      onProgress
-    });
+    envPassword: usedPassword,
+    logger,
+    maxBuffer,
+    onProgress: (pct) => {
+      if (onProgress) onProgress(pct);
+      if (!debug) logger.log(`[PT-OSC] ${pct}%`);
+    },
+    printCommand: true
+  });
 }
 
 /**
