@@ -1,4 +1,5 @@
 import childProcess from 'child_process';
+import { isDebugEnabled } from './debug.js';
 
 const resolvedPtoscPaths = new Map();
 
@@ -95,12 +96,16 @@ export async function runPtoscProcess({
   logger = console,
   maxBuffer = 10 * 1024 * 1024,
   onProgress,
+  printCommand = true,
 }) {
+  const debug = isDebugEnabled();
   const resolvedPath = resolvePtoscPath(ptoscPath);
   const env = { ...process.env };
   if (envPassword) env.MYSQL_PWD = String(envPassword);
 
-  logCommand(resolvedPath, args, logger);
+  if (printCommand) {
+    logCommand(resolvedPath, args, logger);
+  }
 
   await new Promise((resolve, reject) => {
     const child = childProcess.spawn(resolvedPath, args, { env, maxBuffer });
@@ -129,7 +134,7 @@ export async function runPtoscProcess({
         stderrLine = split.pop();
         split.forEach(line => {
           if (!line) return;
-          logger.error(line);
+          if (debug) logger.error(line);
           const m = line.match(pctRegex);
           if (m && onProgress) onProgress(parseFloat(m[1]));
         });
@@ -138,7 +143,7 @@ export async function runPtoscProcess({
         stdoutLine = split.pop();
         split.forEach(line => {
           if (!line) return;
-          logger.log(line);
+          if (debug) logger.log(line);
           const m = line.match(pctRegex);
           if (m && onProgress) onProgress(parseFloat(m[1]));
         });
@@ -160,12 +165,12 @@ export async function runPtoscProcess({
 
     child.on('close', (code) => {
       if (stdoutLine) {
-        logger.log(stdoutLine);
+        if (debug) logger.log(stdoutLine);
         const m = stdoutLine.match(pctRegex);
         if (m && onProgress) onProgress(parseFloat(m[1]));
       }
       if (stderrLine) {
-        logger.error(stderrLine);
+        if (debug) logger.error(stderrLine);
         const m = stderrLine.match(pctRegex);
         if (m && onProgress) onProgress(parseFloat(m[1]));
       }
