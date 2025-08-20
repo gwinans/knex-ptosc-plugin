@@ -113,7 +113,7 @@ export async function runPtoscProcess({
     let stdout = '';
     let stderr = '';
     let total = 0;
-    const pctRegex = /\b(\d{1,3}(?:\.\d+)?)%/;
+    const progressRegex = /\b(\d{1,3}(?:\.\d+)?)%(?:\s+(\d+:\d+(?::\d+)?)\s+remain)?/;
     let stdoutLine = '';
     let stderrLine = '';
 
@@ -135,8 +135,8 @@ export async function runPtoscProcess({
         split.forEach(line => {
           if (!line) return;
           if (debug) logger.error(line);
-          const m = line.match(pctRegex);
-          if (m && onProgress) onProgress(parseFloat(m[1]));
+          const m = line.match(progressRegex);
+          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
         });
         stderr += str;
       } else {
@@ -144,8 +144,8 @@ export async function runPtoscProcess({
         split.forEach(line => {
           if (!line) return;
           if (debug) logger.log(line);
-          const m = line.match(pctRegex);
-          if (m && onProgress) onProgress(parseFloat(m[1]));
+          const m = line.match(progressRegex);
+          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
         });
         stdout += str;
       }
@@ -166,13 +166,13 @@ export async function runPtoscProcess({
     child.on('close', (code) => {
       if (stdoutLine) {
         if (debug) logger.log(stdoutLine);
-        const m = stdoutLine.match(pctRegex);
-        if (m && onProgress) onProgress(parseFloat(m[1]));
+        const m = stdoutLine.match(progressRegex);
+        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
       }
       if (stderrLine) {
         if (debug) logger.error(stderrLine);
-        const m = stderrLine.match(pctRegex);
-        if (m && onProgress) onProgress(parseFloat(m[1]));
+        const m = stderrLine.match(progressRegex);
+        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
       }
       if (code) {
         logger.error(`pt-online-schema-change failed with code ${code}`);

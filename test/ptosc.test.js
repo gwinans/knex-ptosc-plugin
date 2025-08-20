@@ -178,6 +178,90 @@ describe('knex-ptosc-plugin', () => {
       expect(onProgress).toHaveBeenCalledWith(12.5);
     });
 
+    it('logs ETA with progress updates', async () => {
+      const knex = createKnex();
+      const logger = { log: vi.fn(), error: vi.fn() };
+
+      // Dry run
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      // Execution with progress including ETA
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.emit('data', 'Progress: 50% 00:01 remain\n');
+          stdout.emit('data', 'Progress: 100% 00:00 remain\n');
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger });
+
+      expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 50% ETA: 00:01');
+      expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 100% ETA: 00:00');
+    });
+
+    it('logs progress without ETA when not provided', async () => {
+      const knex = createKnex();
+      const logger = { log: vi.fn(), error: vi.fn() };
+
+      // Dry run
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      // Execution with progress but no ETA
+      spawnSpy.mockImplementationOnce(() => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const proc = new EventEmitter();
+        proc.stdout = stdout;
+        proc.stderr = stderr;
+        setImmediate(() => {
+          stdout.emit('data', 'Progress: 50%\n');
+          stdout.emit('data', 'Progress: 100%\n');
+          stdout.end();
+          stderr.end();
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger });
+
+      expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 50%');
+      expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 100%');
+    });
+
     it('throws a descriptive error when pt-online-schema-change is missing', async () => {
       const knex = createKnex();
       spawnSyncSpy.mockImplementation(() => ({ status: 1, stdout: Buffer.from(''), stderr: Buffer.from('') }));

@@ -120,14 +120,13 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     envPassword: usedPassword,
     logger,
     maxBuffer,
-    onProgress,
+    onProgress: onProgress ? (pct) => onProgress(pct) : undefined,
     printCommand: debug
   });
 
   if (debug) {
     logger.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
   }
-
   await runPtoscProcess({
     ptoscPath,
     args: buildPtoscArgs({
@@ -165,9 +164,12 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     envPassword: usedPassword,
     logger,
     maxBuffer,
-    onProgress: (pct) => {
+    onProgress: (pct, eta) => {
       if (onProgress) onProgress(pct);
-      if (!debug) logger.log(`[PT-OSC] ${pct}%`);
+      if (!debug) {
+        const msg = eta ? `[PT-OSC] ${pct}% ETA: ${eta}` : `[PT-OSC] ${pct}%`;
+        logger.log(msg);
+      }
     },
     printCommand: true
   });
