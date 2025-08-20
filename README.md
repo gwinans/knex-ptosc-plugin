@@ -124,7 +124,7 @@ The builder version will:
 | `checkUniqueKeyChange`    | `boolean`                                                  | `true`                      | `--check-unique-key-change` or `--nocheck-unique-key-change`     |
 | `maxLag`                  | `number`                                                   | `25`                        | Passed to `--max-lag`                                            |
 | `maxBuffer`               | `number`                                                   | `10485760`                  | `child_process.execFile` `maxBuffer` in bytes                    |
-| `onProgress`              | `(pct: number) => void`                                    | `undefined`                 | Callback for progress percentage parsed from output               |
+| `onProgress`              | `(pct: number) => void`                                    | `undefined`                 | Callback for progress percentage parsed from output; logs include pt-osc ETA when available |
 | `migrationsTable`         | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks             |
 | `migrationsLockTable`     | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock    |
 
