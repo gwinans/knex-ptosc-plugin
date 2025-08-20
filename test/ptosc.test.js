@@ -8,7 +8,9 @@ import { acquireMigrationLock } from '../src/lock.js';
 function createKnex(updateMock) {
   const qb = {
     where: vi.fn().mockReturnThis(),
-    update: updateMock || vi.fn().mockResolvedValue(1)
+    update: updateMock || vi.fn().mockResolvedValue(1),
+    select: vi.fn().mockReturnThis(),
+    first: vi.fn().mockResolvedValue({ is_locked: 0 })
   };
   const knex = vi.fn().mockReturnValue(qb);
   knex.client = { config: { connection: { database: 'db', host: 'localhost', user: 'root' } } };
@@ -197,6 +199,24 @@ describe('knex-ptosc-plugin', () => {
         alterTableWithBuilder(knex, 'users', (t) => { t.string('age'); }, { logger })
       ).rejects.toThrow('release failed');
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('treats an existing lock as acquired and release is a no-op', async () => {
+      const updateMock = vi.fn().mockResolvedValue(0);
+      const qb = {
+        where: vi.fn().mockReturnThis(),
+        update: updateMock,
+        select: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue({ is_locked: 1 })
+      };
+      const knex = vi.fn().mockReturnValue(qb);
+      knex.schema = { hasTable: vi.fn().mockResolvedValue(true) };
+
+      const lock = await acquireMigrationLock(knex);
+      await lock.release();
+
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      expect(qb.select).toHaveBeenCalledWith('is_locked');
     });
 
     it('throws when migration tables are missing', async () => {
