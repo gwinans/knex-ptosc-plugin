@@ -9,6 +9,8 @@ An LLM (GPT-5) was used heavily in the creation of this plugin.
 This code is a very early swing at extending Knex to use
 `pt-online-schema-change` for DB migrations.
 
+## Intorduction
+
 A [Knex](https://knexjs.org/) helper for running `ALTER TABLE` operations online
 using
 [Percona Toolkit's `pt-online-schema-change`](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html)
@@ -16,6 +18,8 @@ using
 
 This plugin intercepts Knex schema changes and runs them through **pt-osc** so
 they can be executed with minimal locking and downtime.
+
+Github Repo: https://github.com/gwinans/knex-ptosc-plugin
 
 ---
 
