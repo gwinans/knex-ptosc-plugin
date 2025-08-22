@@ -38,6 +38,8 @@ Github Repo: https://github.com/gwinans/knex-ptosc-plugin
   `.alterTable()` builder syntax.
 - **Respects Knex bindings**: Correctly interpolates values from `.toSQL()`
   output.
+- **Column rename support**: Automatically looks up column metadata for
+  `renameColumn` migrations so pt-osc can build the needed `CHANGE` clause.
 - **Instant alters when possible**: Attempts native `ALTER TABLE ... ALGORITHM=INSTANT` and falls back to pt-osc when unsupported.
 
 Servers running MySQL 5.6 or 5.7 skip the instant-alter attempt and always use pt-online-schema-change. Set `forcePtosc: true` to force the pt-osc path on newer versions as well.
