@@ -211,7 +211,9 @@ async function runAlterClause(knex, table, alterClause, options = {}) {
         if (
           err.errno === 1846 ||
           err.errno === 1847 ||
-          (/ALGORITHM=INSTANT/i.test(msg) && /unsupported|not supported/i.test(msg))
+          err.errno === 4092 ||
+          (/ALGORITHM=INSTANT/i.test(msg) && /unsupported|not supported/i.test(msg)) ||
+          /Maximum row versions/i.test(msg)
         ) {
           return await runAlterClauseWithPtosc(knex, table, alterClause, options);
         }
