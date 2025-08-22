@@ -28,56 +28,6 @@ function createKnex(updateMock) {
   return knex;
 }
 
-function createRenameKnex() {
-  const qb = {
-    where: vi.fn().mockReturnThis(),
-    update: vi.fn().mockResolvedValue(1),
-    select: vi.fn().mockReturnThis(),
-    first: vi.fn().mockResolvedValue({ is_locked: 0 })
-  };
-  const knex = vi.fn().mockReturnValue(qb);
-  knex.client = { config: { connection: { database: 'db', host: 'localhost', user: 'root' } } };
-  knex.raw = vi.fn((sql, bindings) => {
-    if (bindings) {
-      if (/SHOW FULL FIELDS FROM `users` where field = \?/i.test(sql)) {
-        return { toQuery: () => `SHOW FULL FIELDS FROM \`users\` where field = '${bindings[0]}'` };
-      }
-      if (/SHOW FULL FIELDS FROM \?\? WHERE Field = \?/i.test(sql)) {
-        return Promise.resolve([
-          {
-            Field: 'name',
-            Type: 'varchar(255)',
-            Null: 'YES',
-            Default: null,
-            Collation: 'utf8mb4_unicode_ci',
-            Extra: ''
-          }
-        ]);
-      }
-      return { toQuery: () => sql };
-    }
-    if (/SELECT VERSION/i.test(sql)) return Promise.resolve([{ version: '5.7.42' }]);
-    throw new Error('unexpected sql');
-  });
-  knex.schema = {
-    hasTable: vi.fn().mockResolvedValue(true),
-    alterTable: vi.fn((_name, cb) => {
-      const builder = {
-        _statements: [],
-        renameColumn(from, to) {
-          this._statements.push({ grouping: 'alterTable', method: 'renameColumn', args: [from, to] });
-        },
-        toSQL() {
-          return [{ sql: 'SHOW FULL FIELDS FROM `users` where field = ?', bindings: ['name'] }];
-        }
-      };
-      cb(builder);
-      return builder;
-    })
-  };
-  return knex;
-}
-
 describe('knex-ptosc-plugin', () => {
   let spawnSpy;
   let spawnSyncSpy;
@@ -148,14 +98,6 @@ describe('knex-ptosc-plugin', () => {
     expect(args[maxIdx + 1]).toBe('Threads_connected=100');
     const criticalIdx = args.indexOf('--critical-load');
     expect(args[criticalIdx + 1]).toBe('Threads_running=50');
-  });
-
-  it('constructs CHANGE clause for renameColumn migrations', async () => {
-    const knex = createRenameKnex();
-    await alterTableWithPtosc(knex, 'users', (t) => { t.renameColumn('name', 'full_name'); }, {});
-    const args = spawnSpy.mock.calls[0][1];
-    expect(args[1]).toContain('CHANGE `name` `full_name` varchar(255)');
-    expect(spawnSpy).toHaveBeenCalledTimes(2);
   });
 
     it('uses a custom logger when provided', async () => {

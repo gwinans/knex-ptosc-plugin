@@ -239,49 +239,10 @@ export async function alterTableWithPtosc(knex, tableName, alterCallback, option
     return knex.raw(sql, bindings).toQuery();
   });
 
-  // Only keep ALTER TABLE statements and detect SHOW FULL FIELDS queries
-  const alterStatements = [];
-  let sawShowFull = false;
-  for (const rawSql of sqls) {
-    const sql = String(rawSql).trim();
-    if (/^ALTER\s+TABLE\b/i.test(sql)) {
-      alterStatements.push(sql);
-    } else if (/^SHOW\s+FULL\s+FIELDS\s+FROM\b/i.test(sql)) {
-      sawShowFull = true;
-    }
-  }
-
-  if (sawShowFull) {
-    const renames = builder._statements?.filter(
-      s => s.grouping === 'alterTable' && s.method === 'renameColumn'
-    ) || [];
-    for (const { args: [from, to] } of renames) {
-      const res = await knex.raw('SHOW FULL FIELDS FROM ?? WHERE Field = ?', [tableName, from]);
-      let rows = Array.isArray(res) ? res[0] : res;
-      const column = Array.isArray(rows) ? rows[0] : rows;
-      if (!column) {
-        throw new Error(`Unable to retrieve column info for ${from}`);
-      }
-      const wrap = v => `\`${String(v).replace(/`/g, '``')}\``;
-      const tableWrapped = /`/.test(tableName) ? tableName : wrap(tableName);
-      let sql = `ALTER TABLE ${tableWrapped} CHANGE ${wrap(from)} ${wrap(to)} ${column.Type}`;
-      if (String(column.Null).toUpperCase() !== 'YES') {
-        sql += ' NOT NULL';
-      } else {
-        sql += ' NULL';
-      }
-      if (column.Default !== undefined && column.Default !== null) {
-        sql += ` DEFAULT '${column.Default}'`;
-      }
-      if (column.Collation !== undefined && column.Collation !== null) {
-        sql += ` COLLATE '${column.Collation}'`;
-      }
-      if (column.Extra === 'auto_increment') {
-        sql += ' AUTO_INCREMENT';
-      }
-      alterStatements.push(sql);
-    }
-  }
+  // Only keep ALTER TABLE statements
+  const alterStatements = sqls
+    .map(sql => String(sql).trim())
+    .filter(sql => /^ALTER\s+TABLE\b/i.test(sql));
 
   if (alterStatements.length === 0) {
     throw new Error(
