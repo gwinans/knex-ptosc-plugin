@@ -63,7 +63,7 @@ describe('native instant alter', () => {
     const knex = createKnex(rawImpl);
     await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {});
     expect(rawImpl).toHaveBeenCalledWith(
-      expect.stringContaining('ALTER TABLE users ADD COLUMN `age` INT, ALGORITHM=INSTANT')
+      expect.stringContaining('ALTER TABLE users ADD COLUMN `age` INT, ALGORITHM=INSTANT, LOCK=NONE')
     );
     expect(spawnSpy).not.toHaveBeenCalled();
   });
