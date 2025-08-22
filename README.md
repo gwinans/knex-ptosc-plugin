@@ -7,9 +7,9 @@ An LLM (GPT-5) was used heavily in the creation of this plugin.
 ## WARNING
 
 This code is a very early swing at extending Knex to use
-`pt-online-schema-change` for DB migrations.
+`pt-online-schema-change` for DB migrations. Use in production at your own risk.
 
-## Intorduction
+## Introduction
 
 A [Knex](https://knexjs.org/) helper for running `ALTER TABLE` operations online
 using
@@ -19,7 +19,9 @@ using
 This plugin intercepts Knex schema changes and runs them through **pt-osc** so
 they can be executed with minimal locking and downtime.
 
-Github Repo: https://github.com/gwinans/knex-ptosc-plugin
+**Github Repo:** https://github.com/gwinans/knex-ptosc-plugin
+
+**Test App:** https://github.com/gwinans/kpp-test-app
 
 ---
 
@@ -38,11 +40,12 @@ Github Repo: https://github.com/gwinans/knex-ptosc-plugin
   `.alterTable()` builder syntax.
 - **Respects Knex bindings**: Correctly interpolates values from `.toSQL()`
   output.
-- **Instant alters when possible**: Attempts native `ALTER TABLE ... ALGORITHM=INSTANT` and falls back to pt-osc when unsupported.
-- **Native index operations**: `ADD INDEX` and `DROP INDEX` statements run directly via Knex without pt-osc.
+- **Instant alters when possible**: Attempts native
+  `ALTER TABLE ... ALGORITHM=INSTANT` and falls back to pt-osc when unsupported.
+- **Native index operations**: `ADD INDEX` and `DROP INDEX` statements run
+  directly via Knex without pt-osc.
 
-Servers running MySQL 5.6 or 5.7 skip the instant-alter attempt and always use pt-online-schema-change. Set `forcePtosc: true` to force the pt-osc path on newer versions as well.
----
+## Servers running MySQL 5.6 or 5.7 skip the instant-alter attempt and always use pt-online-schema-change. Set `forcePtosc: true` to force the pt-osc path on newer versions as well.
 
 ## Requirements
 
@@ -73,7 +76,7 @@ npm install knex-ptosc-plugin
 | `criticalLoadMetric`      | `string`                                                   | `'Threads_running'`         | Metric name used in `--critical-load` (e.g. `Threads_running`)                              |
 | `alterForeignKeysMethod`  | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                                                     |
 | `ptoscPath`               | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                                                       |
-| `forcePtosc`              | `boolean`                                                  | `false`                     | Skip the instant-alter attempt and always run pt-osc                                |
+| `forcePtosc`              | `boolean`                                                  | `false`                     | Skip the instant-alter attempt and always run pt-osc                                        |
 | `analyzeBeforeSwap`       | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`                                        |
 | `checkAlter`              | `boolean`                                                  | `true`                      | `--check-alter` or `--nocheck-alter`                                                        |
 | `checkForeignKeys`        | `boolean`                                                  | `true`                      | `--check-foreign-keys` or `--nocheck-foreign-keys`                                          |
