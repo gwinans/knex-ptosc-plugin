@@ -8,6 +8,7 @@ export interface PtoscOptions {
   criticalLoadMetric?: string;
   alterForeignKeysMethod?: 'auto' | 'rebuild_constraints' | 'drop_swap' | 'none';
   ptoscPath?: string;
+  forcePtosc?: boolean;
   analyzeBeforeSwap?: boolean;
   checkAlter?: boolean;
   checkForeignKeys?: boolean;
