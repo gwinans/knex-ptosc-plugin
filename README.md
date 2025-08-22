@@ -6,8 +6,9 @@ An LLM (GPT-5) was used heavily in the creation of this plugin.
 
 ## WARNING
 
-This code is a very early swing at extending Knex to use
-`pt-online-schema-change` for DB migrations. Use in production at your own risk.
+**This code is a very early swing at extending Knex to use
+`pt-online-schema-change` for DB migrations. Use in production at your own
+risk.**
 
 ## Introduction
 
@@ -24,6 +25,8 @@ locking and downtime. For operations that can be run INSTANT in the engine,
 **Github Repo:** https://github.com/gwinans/knex-ptosc-plugin
 
 **Test App:** https://github.com/gwinans/kpp-test-app
+
+Please, come contribute! Star the project!
 
 ---
 
@@ -47,7 +50,9 @@ locking and downtime. For operations that can be run INSTANT in the engine,
 - **Native index operations**: `ADD INDEX` and `DROP INDEX` statements run
   directly via Knex without pt-osc.
 
-## Servers running MySQL 5.6 or 5.7 skip the instant-alter attempt and always use pt-online-schema-change. Set `forcePtosc: true` to force the pt-osc path on newer versions as well.
+Servers running MySQL 5.6 or 5.7 skip the instant-alter attempt and always use
+pt-online-schema-change. This will not be changed - MySQL 5.6 and 5.7 are
+long-past End-of-Life.
 
 ## Requirements
 
