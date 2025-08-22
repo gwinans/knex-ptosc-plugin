@@ -258,6 +258,13 @@ export async function alterTableWithPtosc(knex, tableName, alterCallback, option
       // Extract the clause after: ALTER TABLE <name> <CLAUSE>
       const m = fullAlter.match(/^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i);
       const clause = m ? m[2] : fullAlter.replace(/^ALTER\s+TABLE\s+\S+\s+/i, '');
+
+      // If the clause only adds or drops indexes, run it natively via Knex.
+      if (/\b(ADD|DROP)\s+(?:UNIQUE\s+)?(?:INDEX|KEY)\b/i.test(clause)) {
+        await knex.raw(fullAlter);
+        continue;
+      }
+
       const s = await runAlterClause(knex, tableName, clause, options);
       if (s) stats.push(s);
     }
