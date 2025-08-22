@@ -16,8 +16,10 @@ using
 [Percona Toolkit's `pt-online-schema-change`](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html)
 (pt-osc).
 
-This plugin intercepts Knex schema changes and runs them through **pt-osc** so
-they can be executed with minimal locking and downtime.
+This plugin offers an alternative to the normal schema builder, allowing alters
+to run through **pt-online-schema-change** so they can be executed with minimal
+locking and downtime. For operations that can be run INSTANT in the engine,
+`pt-osc` will not be invoked, instead knex will handle it.
 
 **Github Repo:** https://github.com/gwinans/knex-ptosc-plugin
 
