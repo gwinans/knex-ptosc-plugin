@@ -14,7 +14,11 @@ function createKnex(updateMock) {
   };
   const knex = vi.fn().mockReturnValue(qb);
   knex.client = { config: { connection: { database: 'db', host: 'localhost', user: 'root' } } };
-  knex.raw = (sql, bindings) => ({ toQuery: () => sql });
+  knex.raw = vi.fn((sql, bindings) => {
+    if (bindings) return { toQuery: () => sql };
+    if (/SELECT VERSION/i.test(sql)) return Promise.resolve([{ version: '5.7.42' }]);
+    throw new Error('unexpected sql');
+  });
   knex.schema = {
     hasTable: vi.fn().mockResolvedValue(true),
     alterTable: vi.fn((_name, _cb) => ({
