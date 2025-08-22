@@ -2,6 +2,6 @@ README.md instructions:
 
 - Ensure the README.md is always up to date with any changes.
 
-PR Instructions:
+CHANGELOG.md Instruction:
 
-- Do not add a link back to the task in PRs.
+- Add all changes to the changelog following the existing format.
