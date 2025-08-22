@@ -2,7 +2,12 @@ import { acquireMigrationLock } from './lock.js';
 import { buildPtoscArgs, runPtoscProcess } from './ptosc-runner.js';
 import { isDebugEnabled } from './debug.js';
 
-const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
+const VALID_FOREIGN_KEYS_METHODS = [
+  'auto',
+  'rebuild_constraints',
+  'drop_swap',
+  'none',
+];
 
 const versionCache = new WeakMap();
 
@@ -14,7 +19,7 @@ async function getMysqlVersion(knex) {
     const m = /(\d+)\.(\d+)/.exec(ver);
     versionCache.set(knex, {
       major: m ? Number(m[1]) : 0,
-      minor: m ? Number(m[2]) : 0
+      minor: m ? Number(m[2]) : 0,
     });
   }
   return versionCache.get(knex);
@@ -54,39 +59,74 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     logger = console,
     onProgress,
     statistics = false,
-    onStatistics
+    onStatistics,
   } = options;
 
   if (maxLoad !== undefined && (!Number.isInteger(maxLoad) || maxLoad <= 0)) {
     throw new TypeError(`maxLoad must be a positive integer, got ${maxLoad}`);
   }
-  if (criticalLoad !== undefined && (!Number.isInteger(criticalLoad) || criticalLoad <= 0)) {
-    throw new TypeError(`criticalLoad must be a positive integer, got ${criticalLoad}`);
+  if (
+    criticalLoad !== undefined &&
+    (!Number.isInteger(criticalLoad) || criticalLoad <= 0)
+  ) {
+    throw new TypeError(
+      `criticalLoad must be a positive integer, got ${criticalLoad}`,
+    );
   }
-  if (checkInterval !== undefined && (!Number.isInteger(checkInterval) || checkInterval <= 0)) {
-    throw new TypeError(`checkInterval must be a positive integer, got ${checkInterval}`);
+  if (
+    checkInterval !== undefined &&
+    (!Number.isInteger(checkInterval) || checkInterval <= 0)
+  ) {
+    throw new TypeError(
+      `checkInterval must be a positive integer, got ${checkInterval}`,
+    );
   }
-  if (chunkIndexColumns !== undefined && (!Number.isInteger(chunkIndexColumns) || chunkIndexColumns <= 0)) {
-    throw new TypeError(`chunkIndexColumns must be a positive integer, got ${chunkIndexColumns}`);
+  if (
+    chunkIndexColumns !== undefined &&
+    (!Number.isInteger(chunkIndexColumns) || chunkIndexColumns <= 0)
+  ) {
+    throw new TypeError(
+      `chunkIndexColumns must be a positive integer, got ${chunkIndexColumns}`,
+    );
   }
-  if (chunkSize !== undefined && (!Number.isInteger(chunkSize) || chunkSize <= 0)) {
-    throw new TypeError(`chunkSize must be a positive integer, got ${chunkSize}`);
+  if (
+    chunkSize !== undefined &&
+    (!Number.isInteger(chunkSize) || chunkSize <= 0)
+  ) {
+    throw new TypeError(
+      `chunkSize must be a positive integer, got ${chunkSize}`,
+    );
   }
-  if (chunkSizeLimit !== undefined && (typeof chunkSizeLimit !== 'number' || chunkSizeLimit <= 0)) {
-    throw new TypeError(`chunkSizeLimit must be a positive number, got ${chunkSizeLimit}`);
+  if (
+    chunkSizeLimit !== undefined &&
+    (typeof chunkSizeLimit !== 'number' || chunkSizeLimit <= 0)
+  ) {
+    throw new TypeError(
+      `chunkSizeLimit must be a positive number, got ${chunkSizeLimit}`,
+    );
   }
-  if (chunkTime !== undefined && (typeof chunkTime !== 'number' || chunkTime <= 0)) {
-    throw new TypeError(`chunkTime must be a positive number, got ${chunkTime}`);
+  if (
+    chunkTime !== undefined &&
+    (typeof chunkTime !== 'number' || chunkTime <= 0)
+  ) {
+    throw new TypeError(
+      `chunkTime must be a positive number, got ${chunkTime}`,
+    );
   }
   if (maxLag !== undefined && (!Number.isInteger(maxLag) || maxLag <= 0)) {
     throw new TypeError(`maxLag must be a positive integer, got ${maxLag}`);
   }
-  if (maxBuffer !== undefined && (!Number.isInteger(maxBuffer) || maxBuffer <= 0)) {
-    throw new TypeError(`maxBuffer must be a positive integer, got ${maxBuffer}`);
+  if (
+    maxBuffer !== undefined &&
+    (!Number.isInteger(maxBuffer) || maxBuffer <= 0)
+  ) {
+    throw new TypeError(
+      `maxBuffer must be a positive integer, got ${maxBuffer}`,
+    );
   }
   if (!VALID_FOREIGN_KEYS_METHODS.includes(alterForeignKeysMethod)) {
     throw new TypeError(
-      `alterForeignKeysMethod must be one of ${VALID_FOREIGN_KEYS_METHODS.join(', ')}; got '${alterForeignKeysMethod}'.`
+      `alterForeignKeysMethod must be one of ${VALID_FOREIGN_KEYS_METHODS.join(', ')}; got '${alterForeignKeysMethod}'.`,
     );
   }
 
@@ -134,17 +174,19 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       dropTriggers,
       checkUniqueKeyChange,
       maxLag,
-      statistics
+      statistics,
     }),
     envPassword: usedPassword,
     logger,
     maxBuffer,
     onProgress: onProgress ? (pct) => onProgress(pct) : undefined,
-    printCommand: debug
+    printCommand: debug,
   });
 
   if (debug) {
-    logger.log(`[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`);
+    logger.log(
+      `[PT-OSC] Dry-run successful. Executing ALTER TABLE ${table} ${alterClause}`,
+    );
   }
   const { statistics: stats } = await runPtoscProcess({
     ptoscPath,
@@ -179,7 +221,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       dropTriggers,
       checkUniqueKeyChange,
       maxLag,
-      statistics
+      statistics,
     }),
     envPassword: usedPassword,
     logger,
@@ -192,7 +234,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
       }
     },
     onStatistics,
-    printCommand: true
+    printCommand: true,
   });
   return statistics ? stats : undefined;
 }
@@ -211,9 +253,15 @@ async function runAlterClause(knex, table, alterClause, options = {}) {
         if (
           err.errno === 1846 ||
           err.errno === 1847 ||
-          (/ALGORITHM=INSTANT/i.test(msg) && /unsupported|not supported/i.test(msg))
+          (/ALGORITHM=INSTANT/i.test(msg) &&
+            /unsupported|not supported/i.test(msg))
         ) {
-          return await runAlterClauseWithPtosc(knex, table, alterClause, options);
+          return await runAlterClauseWithPtosc(
+            knex,
+            table,
+            alterClause,
+            options,
+          );
         }
         throw err;
       }
@@ -227,27 +275,85 @@ async function runAlterClause(knex, table, alterClause, options = {}) {
  * Compiles the alterTable callback, extracts ALTER statements, applies bindings,
  * and runs each via pt-osc under the migration lock..
  */
-export async function alterTableWithPtosc(knex, tableName, alterCallback, options = {}) {
+export async function alterTableWithPtosc(
+  knex,
+  tableName,
+  alterCallback,
+  options = {},
+) {
   const builder = knex.schema.alterTable(tableName, alterCallback);
+
+  // Capture renameColumn calls before compilation, as toSQL() may clear _statements
+  const renameOps =
+    builder._statements
+      ?.filter(
+        (s) => s.grouping === 'alterTable' && s.method === 'renameColumn',
+      )
+      .map(({ args }) => args) || [];
+
   const compiled = builder.toSQL();
   const stmts = Array.isArray(compiled) ? compiled : [compiled];
 
   // Resolve bindings into full SQL strings
-  const sqls = stmts.map(s => {
+  const sqls = stmts.map((s) => {
     const sql = s.sql ?? s;
     const bindings = s.bindings ?? [];
     return knex.raw(sql, bindings).toQuery();
   });
 
   // Only keep ALTER TABLE statements
-  const alterStatements = sqls
-    .map(sql => String(sql).trim())
-    .filter(sql => /^ALTER\s+TABLE\b/i.test(sql));
+  const alterStatements = [];
+  for (const rawSql of sqls) {
+    const sql = String(rawSql).trim();
+    if (/^ALTER\s+TABLE\b/i.test(sql)) {
+      alterStatements.push(sql);
+    }
+  }
+
+  for (const [from, to] of renameOps) {
+    // Skip if an ALTER ... CHANGE for this column already exists
+    const exists = alterStatements.some((sql) => {
+      const re = new RegExp(
+        '\\bCHANGE\\s+`' + from.replace(/`/g, '``') + '`\\b',
+        'i',
+      );
+      return re.test(sql);
+    });
+    if (exists) continue;
+
+    const res = await knex.raw('SHOW FULL FIELDS FROM ?? WHERE Field = ?', [
+      tableName,
+      from,
+    ]);
+    let rows = Array.isArray(res) ? res[0] : res;
+    const column = Array.isArray(rows) ? rows[0] : rows;
+    if (!column) {
+      throw new Error(`Unable to retrieve column info for ${from}`);
+    }
+    const wrap = (v) => `\`${String(v).replace(/`/g, '``')}\``;
+    const tableWrapped = /`/.test(tableName) ? tableName : wrap(tableName);
+    let sql = `ALTER TABLE ${tableWrapped} CHANGE ${wrap(from)} ${wrap(to)} ${column.Type}`;
+    if (String(column.Null).toUpperCase() !== 'YES') {
+      sql += ' NOT NULL';
+    } else {
+      sql += ' NULL';
+    }
+    if (column.Default !== undefined && column.Default !== null) {
+      sql += ` DEFAULT '${column.Default}'`;
+    }
+    if (column.Collation !== undefined && column.Collation !== null) {
+      sql += ` COLLATE '${column.Collation}'`;
+    }
+    if (column.Extra === 'auto_increment') {
+      sql += ' AUTO_INCREMENT';
+    }
+    alterStatements.push(sql);
+  }
 
   if (alterStatements.length === 0) {
     throw new Error(
       `No ALTER TABLE statements generated for "${tableName}". ` +
-      `Only ALTER operations are supported. Use knex.schema.createTable(...) to create tables.`
+        `Only ALTER operations are supported. Use knex.schema.createTable(...) to create tables.`,
     );
   }
 
@@ -256,8 +362,12 @@ export async function alterTableWithPtosc(knex, tableName, alterCallback, option
   try {
     for (const fullAlter of alterStatements) {
       // Extract the clause after: ALTER TABLE <name> <CLAUSE>
-      const m = fullAlter.match(/^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i);
-      const clause = m ? m[2] : fullAlter.replace(/^ALTER\s+TABLE\s+\S+\s+/i, '');
+      const m = fullAlter.match(
+        /^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i,
+      );
+      const clause = m
+        ? m[2]
+        : fullAlter.replace(/^ALTER\s+TABLE\s+\S+\s+/i, '');
       const s = await runAlterClause(knex, tableName, clause, options);
       if (s) stats.push(s);
     }
