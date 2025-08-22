@@ -83,6 +83,21 @@ describe('native instant alter', () => {
     expect(spawnSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('falls back to ptosc when row-version limit is hit', async () => {
+    const rawImpl = vi.fn((sql) => {
+      if (/SELECT VERSION/i.test(sql)) return Promise.resolve([{ version: '8.0.0' }]);
+      if (/ALTER TABLE/i.test(sql)) {
+        const err = new Error('Maximum row versions reached');
+        err.errno = 4092;
+        return Promise.reject(err);
+      }
+      throw new Error('unexpected sql');
+    });
+    const knex = createKnex(rawImpl);
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {});
+    expect(spawnSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('skips native alter on MySQL 5.7', async () => {
     const rawImpl = vi.fn((sql) => {
       if (/SELECT VERSION/i.test(sql)) return Promise.resolve([{ version: '5.7.42' }]);

@@ -46,7 +46,8 @@ Please, come contribute! Star the project!
 - **Respects Knex bindings**: Correctly interpolates values from `.toSQL()`
   output.
 - **Instant alters when possible**: Attempts native
-  `ALTER TABLE ... ALGORITHM=INSTANT` and falls back to pt-osc when unsupported.
+  `ALTER TABLE ... ALGORITHM=INSTANT` and falls back to pt-osc when unsupported or
+  when MySQL returns error 4092 ("Maximum row versions").
 - **Native index operations**: `ADD INDEX` and `DROP INDEX` statements run
   directly via Knex without pt-osc.
 
