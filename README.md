@@ -38,7 +38,9 @@ Github Repo: https://github.com/gwinans/knex-ptosc-plugin
   `.alterTable()` builder syntax.
 - **Respects Knex bindings**: Correctly interpolates values from `.toSQL()`
   output.
+- **Instant alters when possible**: Attempts native `ALTER TABLE ... ALGORITHM=INSTANT, LOCK=NONE` and falls back to pt-osc when unsupported.
 
+Servers running MySQL 5.6 or 5.7 skip the instant-alter attempt and always use pt-online-schema-change. Set `forcePtosc: true` to force the pt-osc path on newer versions as well.
 ---
 
 ## Requirements
@@ -70,6 +72,7 @@ npm install knex-ptosc-plugin
 | `criticalLoadMetric`      | `string`                                                   | `'Threads_running'`         | Metric name used in `--critical-load` (e.g. `Threads_running`)                              |
 | `alterForeignKeysMethod`  | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                                                     |
 | `ptoscPath`               | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                                                       |
+| `forcePtosc`              | `boolean`                                                  | `false`                     | Skip the instant-alter attempt and always run pt-osc                                |
 | `analyzeBeforeSwap`       | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`                                        |
 | `checkAlter`              | `boolean`                                                  | `true`                      | `--check-alter` or `--nocheck-alter`                                                        |
 | `checkForeignKeys`        | `boolean`                                                  | `true`                      | `--check-foreign-keys` or `--nocheck-foreign-keys`                                          |

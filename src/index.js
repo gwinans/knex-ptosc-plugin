@@ -4,6 +4,22 @@ import { isDebugEnabled } from './debug.js';
 
 const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
 
+const versionCache = new WeakMap();
+
+async function getMysqlVersion(knex) {
+  if (!versionCache.has(knex)) {
+    const res = await knex.raw('SELECT VERSION() AS version');
+    const row = Array.isArray(res) ? res[0] : res;
+    const ver = Array.isArray(row) ? row[0].version : row.version;
+    const m = /(\d+)\.(\d+)/.exec(ver);
+    versionCache.set(knex, {
+      major: m ? Number(m[1]) : 0,
+      minor: m ? Number(m[2]) : 0
+    });
+  }
+  return versionCache.get(knex);
+}
+
 /**
  * INTERNAL ONLY: run pt-osc for one ALTER clause (no CREATE handling here).
  * Not exported to avoid any public raw-SQL entrypoint.
@@ -181,6 +197,32 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   return statistics ? stats : undefined;
 }
 
+async function runAlterClause(knex, table, alterClause, options = {}) {
+  const { forcePtosc } = options;
+  if (!forcePtosc) {
+    const { major, minor } = await getMysqlVersion(knex);
+    if (!(major === 5 && (minor === 6 || minor === 7))) {
+      const sql = `ALTER TABLE ${table} ${alterClause}, ALGORITHM=INSTANT, LOCK=NONE`;
+      try {
+        await knex.raw(sql);
+        return;
+      } catch (err) {
+        const msg = err.message || '';
+        if (
+          err.errno === 1846 ||
+          err.errno === 1847 ||
+          (/ALGORITHM=INSTANT/i.test(msg) && /unsupported|not supported/i.test(msg)) ||
+          (/LOCK=NONE/i.test(msg) && /unsupported|not supported/i.test(msg))
+        ) {
+          return await runAlterClauseWithPtosc(knex, table, alterClause, options);
+        }
+        throw err;
+      }
+    }
+  }
+  return await runAlterClauseWithPtosc(knex, table, alterClause, options);
+}
+
 /**
  * Public API: Knex builder path run through pt-online-schema-change.
  * Compiles the alterTable callback, extracts ALTER statements, applies bindings,
@@ -217,7 +259,7 @@ export async function alterTableWithPtosc(knex, tableName, alterCallback, option
       // Extract the clause after: ALTER TABLE <name> <CLAUSE>
       const m = fullAlter.match(/^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i);
       const clause = m ? m[2] : fullAlter.replace(/^ALTER\s+TABLE\s+\S+\s+/i, '');
-      const s = await runAlterClauseWithPtosc(knex, tableName, clause, options);
+      const s = await runAlterClause(knex, tableName, clause, options);
       if (s) stats.push(s);
     }
   } finally {
