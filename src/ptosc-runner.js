@@ -124,8 +124,10 @@ export async function runPtoscProcess({
     let stderr = '';
     let total = 0;
     const progressRegex = /\b(\d{1,3}(?:\.\d+)?)%(?:\s+(\d+:\d+(?::\d+)?)\s+remain)?/;
+    const statsRegex = /^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/;
     let stdoutLine = '';
     let stderrLine = '';
+    const stats = {};
 
     function parseProgressLines(source, isErr) {
       const lines = source.split(/\r?\n|\r/);
@@ -137,6 +139,11 @@ export async function runPtoscProcess({
         }
         const m = line.match(progressRegex);
         if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
+        const s = line.match(statsRegex);
+        if (s) {
+          stats[s[1].trim()] = Number(s[2]);
+          if (onStatistics) onStatistics({ ...stats });
+        }
       });
       return last;
     }
@@ -198,23 +205,13 @@ export async function runPtoscProcess({
         error.stderr = stderr;
         return reject(error);
       }
-      const combined = `${stdout}\n${stderr}`;
-      const stats = {};
-      combined.split(/\r?\n|\r/).forEach(line => {
-        const m = line.match(/^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/);
-        if (m) {
-          stats[m[1].trim()] = Number(m[2]);
-        }
-      });
       const statsCopy = { ...stats };
-      const hasStats = Object.keys(statsCopy).length > 0;
-      if (hasStats) {
+      if (Object.keys(statsCopy).length > 0) {
         logger.log(
           `[PT-OSC] Statistics: ${Object.entries(statsCopy)
             .map(([k, v]) => `${k}=${v}`)
             .join(', ')}`
         );
-        if (onStatistics) onStatistics(statsCopy);
       }
       resolve({ stdout, stderr, statistics: statsCopy });
     });
