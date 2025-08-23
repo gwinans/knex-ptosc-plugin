@@ -5,6 +5,7 @@
 **0.2.7**
 
 - Changed default `ptoscMinRows` to 0.
+- Documented ESM `import` usage in the README.
 
 **0.2.6:**
 
