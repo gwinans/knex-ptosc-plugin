@@ -17,10 +17,11 @@ using
 [Percona Toolkit's `pt-online-schema-change`](https://www.percona.com/doc/percona-toolkit/LATEST/pt-online-schema-change.html)
 (pt-osc).
 
-This plugin offers an alternative to the normal schema builder, allowing alters
-to run through **pt-online-schema-change** so they can be executed with minimal
-locking and downtime. For operations that can be run INSTANT in the engine,
-`pt-osc` will not be invoked, instead knex will handle it.
+This plugin offers an alternative to the normal schema builder, routing the
+`.alterTable()` builder through **pt-online-schema-change** so changes can be
+executed with minimal locking and downtime. Direct raw `ALTER TABLE` strings
+are not supported. For operations that can be run INSTANT in the engine,
+`pt-osc` will not be invoked; instead knex will handle it.
 
 **Github Repo:** https://github.com/gwinans/knex-ptosc-plugin
 
@@ -41,8 +42,8 @@ Please, come contribute! Star the project!
   Table names can be customized with `migrationsTable` and
   `migrationsLockTable`.
 - **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
-- **Full ALTER support**: Works with direct ALTER strings or with Knex’s
-  `.alterTable()` builder syntax.
+- **Full ALTER support**: Uses Knex’s `.alterTable()` builder syntax; raw
+  `ALTER` strings are not supported.
 - **Respects Knex bindings**: Correctly interpolates values from `.toSQL()`
   output.
 - **Instant alters when possible**: Attempts native
@@ -163,6 +164,8 @@ end-to-end behavior.
 ---
 
 ## Example Migration
+The `alterTableWithPtosc` helper accepts a table name and a schema builder
+callback, ensuring all changes use Knex's builder API.
 ### CommonJS
 
 ```js
