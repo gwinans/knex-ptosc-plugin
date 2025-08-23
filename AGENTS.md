@@ -2,6 +2,7 @@ General Instructions:
 
 - Use America/Phoenix as the timezone to get the date.
 - Increment the package.json version if code changes are made. Do not increment the version if only documentation was updated.
+- We don't not care about supporting Windows right now.
 
 README.md instructions:
 
