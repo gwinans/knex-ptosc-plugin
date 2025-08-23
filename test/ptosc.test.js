@@ -228,7 +228,7 @@ describe('knex-ptosc-plugin', () => {
         proc.stdout = stdout;
         proc.stderr = stderr;
         setImmediate(() => {
-          stdout.emit('data', 'Processing 12.5% complete');
+          stdout.emit('data', 'Processing 12.5% 00:03 remain\n');
           stdout.end();
           stderr.end();
           proc.emit('close', 0);
@@ -236,12 +236,13 @@ describe('knex-ptosc-plugin', () => {
         return proc;
       });
       await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { onProgress });
-      expect(onProgress).toHaveBeenCalledWith(12.5);
+      expect(onProgress).toHaveBeenCalledWith(12.5, '00:03');
     });
 
     it('logs ETA with progress updates', async () => {
       const knex = createKnex();
       const logger = { log: vi.fn(), error: vi.fn() };
+      const onProgress = vi.fn();
 
       // Dry run
       spawnSpy.mockImplementationOnce(() => {
@@ -275,10 +276,12 @@ describe('knex-ptosc-plugin', () => {
         return proc;
       });
 
-      await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger });
+      await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger, onProgress });
 
       expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 50% ETA: 00:01');
       expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 100% ETA: 00:00');
+      expect(onProgress).toHaveBeenCalledWith(50, '00:01');
+      expect(onProgress).toHaveBeenCalledWith(100, '00:00');
     });
 
     it('logs progress without ETA when not provided', async () => {

@@ -139,7 +139,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     envPassword: usedPassword,
     logger,
     maxBuffer,
-    onProgress: onProgress ? (pct) => onProgress(pct) : undefined,
+    onProgress: onProgress ? (pct, eta) => onProgress(pct, eta) : undefined,
     printCommand: debug
   });
 
@@ -185,7 +185,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     logger,
     maxBuffer,
     onProgress: (pct, eta) => {
-      if (onProgress) onProgress(pct);
+      if (onProgress) onProgress(pct, eta);
       if (!debug) {
         const msg = eta ? `[PT-OSC] ${pct}% ETA: ${eta}` : `[PT-OSC] ${pct}%`;
         logger.log(msg);
