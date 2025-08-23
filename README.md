@@ -129,8 +129,8 @@ and returned (or sent to `onStatistics`). Example output:
 
 ## Debugging
 
-Set `DEBUG=knex-ptosc-plugin` to print the full pt-online-schema-change command
-and all output lines.
+The full `pt-online-schema-change` command is logged before execution regardless
+of `DEBUG`. Set `DEBUG=knex-ptosc-plugin` to enable verbose, line-by-line output.
 
 ```sh
 DEBUG=knex-ptosc-plugin knex migrate:latest
