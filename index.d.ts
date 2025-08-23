@@ -47,3 +47,9 @@ export declare function alterTableWithPtosc(
   alterCallback: (tableBuilder: Knex.AlterTableBuilder) => void,
   options?: PtoscOptions
 ): Promise<Record<string, number>[] | undefined>;
+
+export declare function alterTableWithPtoscRaw(
+  knex: Knex,
+  sql: string,
+  ...sqlsOrOptions: Array<string | PtoscOptions>
+): Promise<Record<string, number>[] | undefined>;
