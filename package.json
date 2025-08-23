@@ -1,6 +1,6 @@
 {
   "name": "knex-ptosc-plugin",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
   "description": "Knex plugin to run migrations with ptosc",
   "keywords": [

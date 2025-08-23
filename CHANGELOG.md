@@ -1,6 +1,6 @@
 # CHANGELOG
 
-### 2025-08-25 - 0.2.7:
+### 2025-08-23 - 0.2.7:
 
 - Changed default `ptoscMinRows` to 0.
 
