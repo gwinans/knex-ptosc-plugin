@@ -2,6 +2,10 @@
 
 ### 2025-08-23:
 
+**0.2.13**
+
+- Stream statistics line-by-line and invoke `onStatistics` for each update.
+
 **0.2.12**
 
 - Remove ineffective `maxBuffer` option from `child_process.spawn`.

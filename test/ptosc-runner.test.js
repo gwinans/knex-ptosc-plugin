@@ -66,6 +66,34 @@ describe('progress parsing', () => {
   });
 });
 
+describe('statistics streaming', () => {
+  it('invokes onStatistics for each stats line', async () => {
+    const onStatistics = vi.fn();
+    spawnSpy.mockImplementationOnce(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stdout.emit('data', '# one 1\n');
+        stdout.emit('data', '# two 2\n');
+        stdout.emit('data', '# three 3\n');
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
+    });
+    const { statistics } = await runPtoscProcess({ args: [], onStatistics });
+    expect(onStatistics).toHaveBeenCalledTimes(3);
+    expect(onStatistics).toHaveBeenNthCalledWith(1, { one: 1 });
+    expect(onStatistics).toHaveBeenNthCalledWith(2, { one: 1, two: 2 });
+    expect(onStatistics).toHaveBeenNthCalledWith(3, { one: 1, two: 2, three: 3 });
+    expect(statistics).toEqual({ one: 1, two: 2, three: 3 });
+  });
+});
+
 describe('logger validation', () => {
   it('throws when logger.log is not a function', async () => {
     await expect(
