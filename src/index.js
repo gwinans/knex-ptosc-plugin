@@ -198,7 +198,40 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
 }
 
 async function runAlterClause(knex, table, alterClause, options = {}) {
-  const { forcePtosc } = options;
+  const { forcePtosc, ptoscMinRows } = options;
+
+  if (ptoscMinRows !== undefined && (!Number.isInteger(ptoscMinRows) || ptoscMinRows <= 0)) {
+    throw new TypeError(`ptoscMinRows must be a positive integer, got ${ptoscMinRows}`);
+  }
+
+  if (ptoscMinRows !== undefined) {
+    const conn = knex.client.config.connection || {};
+    let tbl = String(table).replace(/`/g, '');
+    let db = conn.database;
+    if (tbl.includes('.')) {
+      const parts = tbl.split('.');
+      if (parts.length === 2) {
+        db = parts[0];
+        tbl = parts[1];
+      }
+    }
+    try {
+      const res = await knex.raw(
+        'SELECT TABLE_ROWS FROM information_schema.tables WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
+        [db, tbl]
+      );
+      const row = Array.isArray(res) ? res[0] : res;
+      const data = Array.isArray(row) ? row[0] : row;
+      const rowCount = data ? data.TABLE_ROWS ?? data.table_rows : undefined;
+      if (rowCount !== undefined && rowCount < ptoscMinRows) {
+        await knex.raw(`ALTER TABLE ${table} ${alterClause}`);
+        return;
+      }
+    } catch {
+      // Ignore row count errors and fall back to normal logic
+    }
+  }
+
   if (!forcePtosc) {
     const { major, minor } = await getMysqlVersion(knex);
     if (!(major === 5 && (minor === 6 || minor === 7))) {

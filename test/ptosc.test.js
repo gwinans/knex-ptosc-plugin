@@ -5,7 +5,7 @@ import { EventEmitter } from 'events';
 import { alterTableWithPtosc } from '../index.js';
 import { acquireMigrationLock } from '../src/lock.js';
 
-function createKnex(updateMock) {
+function createKnex(updateMock, rowCount) {
   const qb = {
     where: vi.fn().mockReturnThis(),
     update: updateMock || vi.fn().mockResolvedValue(1),
@@ -15,8 +15,14 @@ function createKnex(updateMock) {
   const knex = vi.fn().mockReturnValue(qb);
   knex.client = { config: { connection: { database: 'db', host: 'localhost', user: 'root' } } };
   knex.raw = vi.fn((sql, bindings) => {
-    if (bindings) return { toQuery: () => sql };
+    if (bindings) {
+      if (/information_schema\.tables/i.test(sql)) {
+        return Promise.resolve([{ TABLE_ROWS: rowCount ?? 0 }]);
+      }
+      return { toQuery: () => sql };
+    }
     if (/SELECT VERSION/i.test(sql)) return Promise.resolve([{ version: '5.7.42' }]);
+    if (/^ALTER TABLE/i.test(sql)) return Promise.resolve();
     throw new Error('unexpected sql');
   });
   knex.schema = {
@@ -66,6 +72,17 @@ describe('knex-ptosc-plugin', () => {
     const knex = createKnex();
     await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, {});
     expect(spawnSpy).toHaveBeenCalledTimes(2); // dry-run + execute
+  });
+
+  it('executes ALTER natively when row count is below threshold', async () => {
+    const knex = createKnex(undefined, 10);
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { ptoscMinRows: 100 });
+    expect(spawnSpy).not.toHaveBeenCalled();
+    expect(knex.raw).toHaveBeenCalledWith(
+      'SELECT TABLE_ROWS FROM information_schema.tables WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
+      ['db', 'users']
+    );
+    expect(knex.raw).toHaveBeenCalledWith('ALTER TABLE users ADD COLUMN `age` INT');
   });
 
   it('supports additional pt-osc flags', async () => {

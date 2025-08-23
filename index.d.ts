@@ -9,6 +9,7 @@ export interface PtoscOptions {
   alterForeignKeysMethod?: 'auto' | 'rebuild_constraints' | 'drop_swap' | 'none';
   ptoscPath?: string;
   forcePtosc?: boolean;
+  ptoscMinRows?: number;
   analyzeBeforeSwap?: boolean;
   checkAlter?: boolean;
   checkForeignKeys?: boolean;
