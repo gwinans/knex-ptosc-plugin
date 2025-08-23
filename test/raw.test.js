@@ -5,7 +5,7 @@ import { EventEmitter } from 'events';
 import { alterTableWithPtoscRaw } from '../index.js';
 import * as lock from '../src/lock.js';
 
-function createKnex() {
+function createKnex(rowCount = 0) {
   const qb = {
     where: vi.fn().mockReturnThis(),
     update: vi.fn().mockResolvedValue(1),
@@ -14,7 +14,13 @@ function createKnex() {
   };
   const knex = vi.fn().mockReturnValue(qb);
   knex.client = { config: { connection: { database: 'db', host: 'localhost', user: 'root' } } };
-  knex.raw = vi.fn(sql => {
+  knex.raw = vi.fn((sql, bindings) => {
+    if (bindings) {
+      if (/information_schema\.tables/i.test(sql)) {
+        return Promise.resolve([{ TABLE_ROWS: rowCount }]);
+      }
+      return { toQuery: () => sql };
+    }
     if (/SELECT VERSION/i.test(sql)) return Promise.resolve([{ version: '5.7.42' }]);
     if (/^ALTER TABLE/i.test(sql)) return Promise.resolve();
     throw new Error('unexpected sql');
@@ -71,6 +77,36 @@ describe('alterTableWithPtoscRaw', () => {
     expect(knex.raw).toHaveBeenCalledWith(sql);
     expect(spawnSpy).not.toHaveBeenCalled();
     expect(spawnSyncSpy).not.toHaveBeenCalled();
+  });
+
+  it('bypasses pt-osc when below ptoscMinRows and forwards custom options', async () => {
+    const knex = createKnex(10);
+
+    await alterTableWithPtoscRaw(
+      knex,
+      'ALTER TABLE `users` ADD COLUMN `age` INT',
+      { ptoscMinRows: 100 }
+    );
+    expect(spawnSpy).not.toHaveBeenCalled();
+    expect(spawnSyncSpy).not.toHaveBeenCalled();
+    expect(knex.raw).toHaveBeenCalledWith(
+      'SELECT TABLE_ROWS FROM information_schema.tables WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
+      ['db', 'users']
+    );
+    expect(knex.raw).toHaveBeenCalledWith('ALTER TABLE `users` ADD COLUMN `age` INT');
+
+    spawnSpy.mockClear();
+    spawnSyncSpy.mockClear();
+    knex.raw.mockClear();
+
+    await alterTableWithPtoscRaw(
+      knex,
+      'ALTER TABLE `users` ADD COLUMN `age` INT',
+      { chunkSize: 2000 }
+    );
+    const args = spawnSpy.mock.calls[0][1];
+    const sizeIdx = args.indexOf('--chunk-size');
+    expect(args[sizeIdx + 1]).toBe('2000');
   });
 
   it('supports additional pt-osc flags', async () => {
