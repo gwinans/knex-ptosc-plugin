@@ -343,6 +343,89 @@ describe('knex-ptosc-plugin', () => {
     expect(logger.log).toHaveBeenCalledWith('[PT-OSC] 100%');
   });
 
+  it('emits progress updates separated by carriage returns', async () => {
+    const knex = createKnex();
+    const onProgress = vi.fn();
+
+    // Dry run
+    spawnSpy.mockImplementationOnce(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
+    });
+
+    // Execution with carriage return separated progress
+    spawnSpy.mockImplementationOnce(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stdout.emit('data', 'Progress: 10% 00:02 remain\rProgress: 20% 00:01 remain\r');
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
+    });
+
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { onProgress });
+
+    expect(onProgress).toHaveBeenCalledWith(10, '00:02');
+    expect(onProgress).toHaveBeenCalledWith(20, '00:01');
+  });
+
+  it('emits progress updates from stderr', async () => {
+    const knex = createKnex();
+    const onProgress = vi.fn();
+
+    // Dry run
+    spawnSpy.mockImplementationOnce(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
+    });
+
+    // Execution with progress on stderr
+    spawnSpy.mockImplementationOnce(() => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const proc = new EventEmitter();
+      proc.stdout = stdout;
+      proc.stderr = stderr;
+      setImmediate(() => {
+        stderr.emit('data', 'Progress: 30% 00:02 remain\n');
+        stderr.emit('data', 'Progress: 60% 00:01 remain\n');
+        stdout.end();
+        stderr.end();
+        proc.emit('close', 0);
+      });
+      return proc;
+    });
+
+    await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { onProgress });
+
+    expect(onProgress).toHaveBeenCalledWith(30, '00:02');
+    expect(onProgress).toHaveBeenCalledWith(60, '00:01');
+  });
+
   it('parses statistics output and invokes callback', async () => {
     const knex = createKnex();
     const onStats = vi.fn();
