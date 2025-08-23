@@ -164,25 +164,19 @@ end-to-end behavior.
 ## Example Migration
 
 ```js
-import { alterTableWithPtosc } from "knex-ptosc-plugin";
+const { alterTableWithPtosc } = require('knex-ptosc-plugin');
 
-export async function up(knex) {
-  await alterTableWithPtosc(knex, "users", (t) => {
-    t.string("nickname").nullable();
-  }, {
-    maxLoad: 150,
-    criticalLoad: 50,
+exports.up = function (knex) {
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.bigInteger('qty').alter();
   });
-}
+};
 
-export async function down(knex) {
-  await alterTableWithPtosc(knex, "users", (t) => {
-    t.dropColumn("nickname");
-  }, {
-    maxLoad: 150,
-    criticalLoad: 50,
+exports.down = function (knex) {
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.integer('qty').alter();
   });
-}
+};
 ```
 
 ---
