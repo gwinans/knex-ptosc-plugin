@@ -85,6 +85,7 @@ npm install knex-ptosc-plugin
 | `alterForeignKeysMethod`  | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                                                     |
 | `ptoscPath`               | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                                                       |
 | `forcePtosc`              | `boolean`                                                  | `false`                     | Skip the instant-alter attempt and always run pt-osc                                        |
+| `ptoscMinRows`           | `number`                                                   | `undefined`                 | Minimum row count required to use pt-osc; below this, ALTER runs natively                  |
 | `analyzeBeforeSwap`       | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`                                        |
 | `checkAlter`              | `boolean`                                                  | `true`                      | `--check-alter` or `--nocheck-alter`                                                        |
 | `checkForeignKeys`        | `boolean`                                                  | `true`                      | `--check-foreign-keys` or `--nocheck-foreign-keys`                                          |
