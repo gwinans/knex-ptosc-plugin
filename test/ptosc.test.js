@@ -497,22 +497,28 @@ describe('knex-ptosc-plugin', () => {
       expect(logger.error).toHaveBeenCalled();
     });
 
-    it('treats an existing lock as acquired and release is a no-op', async () => {
-      const updateMock = vi.fn().mockResolvedValue(0);
+    it('waits for an existing lock to clear before acquiring', async () => {
+      vi.useFakeTimers();
+      let locked = true;
+      const updateMock = vi.fn(() => Promise.resolve(locked ? 0 : 1));
+      const firstMock = vi.fn(() => Promise.resolve({ is_locked: locked ? 1 : 0 }));
       const qb = {
         where: vi.fn().mockReturnThis(),
         update: updateMock,
         select: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({ is_locked: 1 })
+        first: firstMock
       };
       const knex = vi.fn().mockReturnValue(qb);
       knex.schema = { hasTable: vi.fn().mockResolvedValue(true) };
 
-      const lock = await acquireMigrationLock(knex);
+      const lockPromise = acquireMigrationLock(knex, { timeoutMs: 1000, intervalMs: 100 });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(updateMock.mock.calls.length).toBeGreaterThan(1);
+      locked = false;
+      await vi.advanceTimersByTimeAsync(100);
+      const lock = await lockPromise;
       await lock.release();
-
-      expect(updateMock).toHaveBeenCalledTimes(1);
-      expect(qb.select).toHaveBeenCalledWith('is_locked');
+      vi.useRealTimers();
     });
 
     it('throws when migration tables are missing', async () => {
@@ -525,14 +531,57 @@ describe('knex-ptosc-plugin', () => {
 
     it('times out if the lock cannot be acquired', async () => {
       vi.useFakeTimers();
-      const updateMock = vi.fn().mockResolvedValue(0);
-      const knex = createKnex(updateMock);
+      let locked = true;
+      const updateMock = vi.fn(() => Promise.resolve(0));
+      const firstMock = vi.fn(() => Promise.resolve({ is_locked: locked ? 1 : 0 }));
+      const qb = {
+        where: vi.fn().mockReturnThis(),
+        update: updateMock,
+        select: vi.fn().mockReturnThis(),
+        first: firstMock
+      };
+      const knex = vi.fn().mockReturnValue(qb);
+      knex.schema = { hasTable: vi.fn().mockResolvedValue(true) };
       const promise = acquireMigrationLock(knex, { timeoutMs: 1000, intervalMs: 100 });
-      const expectPromise = expect(promise).rejects.toThrow(
-        /Timeout acquiring knex_migrations_lock/
-      );
+      const expectPromise = expect(promise).rejects.toThrow(/Timeout acquiring knex_migrations_lock/);
       await vi.advanceTimersByTimeAsync(1100);
       await expectPromise;
+      vi.useRealTimers();
+    });
+
+    it('blocks concurrent callers until the first lock is released or times out', async () => {
+      vi.useFakeTimers();
+      let locked = false;
+      const updateMock = vi.fn((values) => {
+        if (values.is_locked === 1) {
+          if (!locked) {
+            locked = true;
+            return Promise.resolve(1);
+          }
+          return Promise.resolve(0);
+        }
+        if (values.is_locked === 0) {
+          locked = false;
+          return Promise.resolve(1);
+        }
+        return Promise.resolve(0);
+      });
+      const firstMock = vi.fn(() => Promise.resolve({ is_locked: locked ? 1 : 0 }));
+      const qb = {
+        where: vi.fn().mockReturnThis(),
+        update: updateMock,
+        select: vi.fn().mockReturnThis(),
+        first: firstMock
+      };
+      const knex = vi.fn().mockReturnValue(qb);
+      knex.schema = { hasTable: vi.fn().mockResolvedValue(true) };
+
+      const lock1 = await acquireMigrationLock(knex);
+      const lock2Promise = acquireMigrationLock(knex, { timeoutMs: 1000, intervalMs: 100 });
+      const expectPromise = expect(lock2Promise).rejects.toThrow(/Timeout acquiring knex_migrations_lock/);
+      await vi.advanceTimersByTimeAsync(1100);
+      await expectPromise;
+      await lock1.release();
       vi.useRealTimers();
     });
   });

@@ -40,6 +40,7 @@ Please, come contribute! Star the project!
   environment variable (never on the command line or in logs).
 - **Atomic migration lock**: Uses Knex’s migrations lock row
   (`knex_migrations_lock` by default) to prevent concurrent schema changes.
+  Concurrent callers wait until the lock is released or the timeout elapses.
   Table names can be customized with `migrationsTable` and
   `migrationsLockTable`.
 - **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
@@ -159,7 +160,8 @@ end-to-end behavior.
 - **Password is hidden**: Never appears in process list, logs, or command
   history.
 - **Atomic locks**: Lock acquisition uses `UPDATE ... WHERE is_locked=0` to
-  avoid stealing locks from another process.
+  avoid stealing locks from another process and waits for existing locks to
+  clear before proceeding.
 - **Dry-run first**: Always verifies the migration before execution.
 
 ---

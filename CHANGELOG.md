@@ -7,6 +7,7 @@
 - Remove ineffective `maxBuffer` option from `child_process.spawn`.
 - Test `ptoscMinRows` bypass and `chunkSize` forwarding in `alterTableWithPtoscRaw`.
 - Extract progress line parsing helper for stdout and stderr.
+- Wait for existing migration locks to clear instead of treating them as acquired.
 
 ### 2025-08-22:
 
