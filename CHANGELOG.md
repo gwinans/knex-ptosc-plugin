@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 2025-08-23 - 0.2.5:
+
+- Pass pt-osc ETA through the `onProgress` callback.
+
 ### 2025-08-22 - 0.2.4:
 
 - Catches error 4092 and forces the alter to run through

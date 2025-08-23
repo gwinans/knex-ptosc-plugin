@@ -104,7 +104,7 @@ npm install knex-ptosc-plugin
 | `maxLag`                  | `number`                                                   | `25`                        | Passed to `--max-lag`                                                                       |
 | `maxBuffer`               | `number`                                                   | `10485760`                  | `child_process.execFile` `maxBuffer` in bytes                                               |
 | `logger`                  | `{ log: Function, error: Function }`                       | `console`                   | Override default logging methods                                                            |
-| `onProgress`              | `(pct: number) => void`                                    | `undefined`                 | Callback for progress percentage parsed from output; logs include pt-osc ETA when available |
+| `onProgress`              | `(pct: number, eta?: string) => void`                      | `undefined`                 | Callback for progress percentage and optional ETA parsed from output; logs include pt-osc ETA when available |
 | `statistics`              | `boolean`                                                  | `false`                     | Adds `--statistics`; log and collect internal pt-osc counters                               |
 | `onStatistics`            | `(stats: Record<string, number>) => void`                  | `undefined`                 | Invoked with parsed statistics object when `statistics` is true                             |
 | `migrationsTable`         | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks                                        |
