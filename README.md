@@ -76,43 +76,43 @@ npm install knex-ptosc-plugin
 
 ## Options
 
-| Option                    | Type                                                       | Default                     | Description                                                                                 |
-| ------------------------- | ---------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------- |
-| `password`                | `string`                                                   | from Knex connection        | Override DB password; will be passed via `MYSQL_PWD` env                                    |
-| `maxLoad`                 | `number`                                                   | `undefined`                 | Passed to `--max-load` (e.g. `Threads_connected=150`)                                       |
-| `maxLoadMetric`           | `string`                                                   | `'Threads_running'`         | Metric name used in `--max-load` (e.g. `Threads_connected`)                                 |
-| `criticalLoad`            | `number`                                                   | `undefined`                 | Passed to `--critical-load` (e.g. `Threads_running=50`)                                     |
-| `criticalLoadMetric`      | `string`                                                   | `'Threads_running'`         | Metric name used in `--critical-load` (e.g. `Threads_running`)                              |
-| `alterForeignKeysMethod`  | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'`                    | Passed to `--alter-foreign-keys-method`                                                     |
-| `ptoscPath`               | `string`                                                   | `'pt-online-schema-change'` | Path to pt-osc binary                                                                       |
-| `forcePtosc`              | `boolean`                                                  | `false`                     | Skip the instant-alter attempt and always run pt-osc                                        |
-| `ptoscMinRows`           | `number`                                                   | `0`                         | Minimum row count required to use pt-osc; below this, ALTER runs natively                  |
-| `analyzeBeforeSwap`       | `boolean`                                                  | `true`                      | `--analyze-before-swap` or `--noanalyze-before-swap`                                        |
-| `checkAlter`              | `boolean`                                                  | `true`                      | `--check-alter` or `--nocheck-alter`                                                        |
-| `checkForeignKeys`        | `boolean`                                                  | `true`                      | `--check-foreign-keys` or `--nocheck-foreign-keys`                                          |
-| `checkInterval`           | `number`                                                   | `undefined`                 | Passed to `--check-interval`                                                                |
-| `checkPlan`               | `boolean`                                                  | `true`                      | `--check-plan` or `--nocheck-plan`                                                          |
-| `checkReplicationFilters` | `boolean`                                                  | `true`                      | `--check-replication-filters` or `--nocheck-replication-filters`                            |
-| `checkReplicaLag`         | `boolean`                                                  | `false`                     | Adds `--check-replica-lag`                                                                  |
-| `chunkIndex`              | `string`                                                   | `undefined`                 | Passed to `--chunk-index`                                                                   |
-| `chunkIndexColumns`       | `number`                                                   | `undefined`                 | Passed to `--chunk-index-columns`                                                           |
-| `chunkSize`               | `number`                                                   | `1000`                      | Passed to `--chunk-size`                                                                    |
-| `chunkSizeLimit`          | `number`                                                   | `4.0`                       | Passed to `--chunk-size-limit`                                                              |
-| `chunkTime`               | `number`                                                   | `0.5`                       | Passed to `--chunk-time`                                                                    |
-| `dropNewTable`            | `boolean`                                                  | `true`                      | `--drop-new-table` or `--nodrop-new-table`                                                  |
-| `dropOldTable`            | `boolean`                                                  | `true`                      | `--drop-old-table` or `--nodrop-old-table`                                                  |
-| `dropTriggers`            | `boolean`                                                  | `true`                      | `--drop-triggers` or `--nodrop-triggers`                                                    |
-| `checkUniqueKeyChange`    | `boolean`                                                  | `true`                      | `--check-unique-key-change` or `--nocheck-unique-key-change`                                |
-| `maxLag`                  | `number`                                                   | `25`                        | Passed to `--max-lag`                                                                       |
-| `maxBuffer`               | `number`                                                   | `10485760`                  | `child_process.execFile` `maxBuffer` in bytes                                               |
-| `logger`                  | `{ log: Function, error: Function }`                       | `console`                   | Override default logging methods                                                            |
-| `onProgress`              | `(pct: number, eta?: string) => void`                      | `undefined`                 | Callback for progress percentage and optional ETA parsed from output; logs include pt-osc ETA when available |
-| `statistics`              | `boolean`                                                  | `false`                     | Adds `--statistics`; log and collect internal pt-osc counters                               |
-| `onStatistics`            | `(stats: Record<string, number>) => void`                  | `undefined`                 | Invoked with parsed statistics object when `statistics` is true                             |
-| `migrationsTable`         | `string`                                                   | `'knex_migrations'`         | Overrides migrations table name used for lock checks                                        |
-| `migrationsLockTable`     | `string`                                                   | `'knex_migrations_lock'`    | Overrides migrations lock table name used when acquiring lock                               |
-| `timeoutMs`               | `number`                                                   | `30000`                     | Timeout in ms when acquiring migration lock                                                 |
-| `intervalMs`              | `number`                                                   | `500`                       | Delay between lock retries in ms                                                            |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `password` | `string` | from Knex connection | Override DB password; passed via `MYSQL_PWD` env |
+| `maxLoad` | `number` | `undefined` | Passed to `--max-load` (e.g. `Threads_connected=150`) |
+| `maxLoadMetric` | `string` | `'Threads_running'` | Metric name used in `--max-load` (e.g. `Threads_connected`) |
+| `criticalLoad` | `number` | `undefined` | Passed to `--critical-load` (e.g. `Threads_running=50`) |
+| `criticalLoadMetric` | `string` | `'Threads_running'` | Metric name used in `--critical-load` (e.g. `Threads_running`) |
+| `alterForeignKeysMethod` | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'` | Passed to `--alter-foreign-keys-method` |
+| `ptoscPath` | `string` | `'pt-online-schema-change'` | Path to pt-osc binary |
+| `forcePtosc` | `boolean` | `false` | Skip the instant-alter attempt and always run pt-osc |
+| `ptoscMinRows` | `number` | `0` | Minimum row count required to use pt-osc; below this, ALTER runs natively |
+| `analyzeBeforeSwap` | `boolean` | `true` | `--analyze-before-swap` or `--noanalyze-before-swap` |
+| `checkAlter` | `boolean` | `true` | `--check-alter` or `--nocheck-alter` |
+| `checkForeignKeys` | `boolean` | `true` | `--check-foreign-keys` or `--nocheck-foreign-keys` |
+| `checkInterval` | `number` | `undefined` | Passed to `--check-interval` |
+| `checkPlan` | `boolean` | `true` | `--check-plan` or `--nocheck-plan` |
+| `checkReplicationFilters` | `boolean` | `true` | `--check-replication-filters` or `--nocheck-replication-filters` |
+| `checkReplicaLag` | `boolean` | `false` | Adds `--check-replica-lag` |
+| `chunkIndex` | `string` | `undefined` | Passed to `--chunk-index` |
+| `chunkIndexColumns` | `number` | `undefined` | Passed to `--chunk-index-columns` |
+| `chunkSize` | `number` | `1000` | Passed to `--chunk-size` |
+| `chunkSizeLimit` | `number` | `4.0` | Passed to `--chunk-size-limit` |
+| `chunkTime` | `number` | `0.5` | Passed to `--chunk-time` |
+| `dropNewTable` | `boolean` | `true` | `--drop-new-table` or `--nodrop-new-table` |
+| `dropOldTable` | `boolean` | `true` | `--drop-old-table` or `--nodrop-old-table` |
+| `dropTriggers` | `boolean` | `true` | `--drop-triggers` or `--nodrop-triggers` |
+| `checkUniqueKeyChange` | `boolean` | `true` | `--check-unique-key-change` or `--nocheck-unique-key-change` |
+| `maxLag` | `number` | `25` | Passed to `--max-lag` |
+| `maxBuffer` | `number` | `10485760` | `child_process.execFile` `maxBuffer` in bytes |
+| `logger` | `{ log: Function, error: Function }` | `console` | Override default logging methods |
+| `onProgress` | `(pct: number, eta?: string) => void` | `undefined` | Callback for progress percentage and optional ETA parsed from output; logs include pt-osc ETA when available |
+| `statistics` | `boolean` | `false` | Adds `--statistics`; log and collect internal pt-osc counters |
+| `onStatistics` | `(stats: Record<string, number>) => void` | `undefined` | Invoked with parsed statistics object when `statistics` is true |
+| `migrationsTable` | `string` | `'knex_migrations'` | Overrides migrations table name used for lock checks |
+| `migrationsLockTable` | `string` | `'knex_migrations_lock'` | Overrides migrations lock table name used when acquiring lock |
+| `timeoutMs` | `number` | `30000` | Timeout in ms when acquiring migration lock |
+| `intervalMs` | `number` | `500` | Delay between lock retries in ms |
 
 ### Statistics example
 
