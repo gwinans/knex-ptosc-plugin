@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 2025-08-25 - 0.2.7:
+
+- Changed default `ptoscMinRows` to 0.
+
 ### 2025-08-24 - 0.2.6:
 
 - Added `ptoscMinRows` option to run native `ALTER TABLE` when table rows are below a threshold.

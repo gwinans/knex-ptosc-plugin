@@ -198,13 +198,13 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
 }
 
 async function runAlterClause(knex, table, alterClause, options = {}) {
-  const { forcePtosc, ptoscMinRows } = options;
+  const { forcePtosc, ptoscMinRows = 0 } = options;
 
-  if (ptoscMinRows !== undefined && (!Number.isInteger(ptoscMinRows) || ptoscMinRows <= 0)) {
-    throw new TypeError(`ptoscMinRows must be a positive integer, got ${ptoscMinRows}`);
+  if (!Number.isInteger(ptoscMinRows) || ptoscMinRows < 0) {
+    throw new TypeError(`ptoscMinRows must be a non-negative integer, got ${ptoscMinRows}`);
   }
 
-  if (ptoscMinRows !== undefined) {
+  if (ptoscMinRows > 0) {
     const conn = knex.client.config.connection || {};
     let tbl = String(table).replace(/`/g, '');
     let db = conn.database;
