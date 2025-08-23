@@ -65,3 +65,21 @@ describe('progress parsing', () => {
     expect(onProgress).toHaveBeenCalledWith(20, '00:01');
   });
 });
+
+describe('logger validation', () => {
+  it('throws when logger.log is not a function', async () => {
+    await expect(
+      runPtoscProcess({ args: [], logger: { log: true, error: () => {} } })
+    ).rejects.toThrow(/logger\.log must be a function/);
+    expect(spawnSyncSpy).not.toHaveBeenCalled();
+    expect(spawnSpy).not.toHaveBeenCalled();
+  });
+
+  it('throws when logger.error is not a function', async () => {
+    await expect(
+      runPtoscProcess({ args: [], logger: { log: () => {}, error: true } })
+    ).rejects.toThrow(/logger\.error must be a function/);
+    expect(spawnSyncSpy).not.toHaveBeenCalled();
+    expect(spawnSpy).not.toHaveBeenCalled();
+  });
+});

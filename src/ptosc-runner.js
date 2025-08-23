@@ -101,6 +101,13 @@ export async function runPtoscProcess({
   onStatistics,
   printCommand = true,
 }) {
+  if (typeof logger.log !== 'function') {
+    throw new TypeError('logger.log must be a function');
+  }
+  if (typeof logger.error !== 'function') {
+    throw new TypeError('logger.error must be a function');
+  }
+
   const debug = isDebugEnabled();
   const resolvedPath = resolvePtoscPath(ptoscPath);
   const env = { ...process.env };

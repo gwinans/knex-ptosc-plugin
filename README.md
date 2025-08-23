@@ -107,7 +107,7 @@ npm install knex-ptosc-plugin
 | `checkUniqueKeyChange` | `boolean` | `true` | `--check-unique-key-change` or `--nocheck-unique-key-change` |
 | `maxLag` | `number` | `25` | Passed to `--max-lag` |
 | `maxBuffer` | `number` | `10485760` | `child_process.execFile` `maxBuffer` in bytes |
-| `logger` | `{ log: Function, error: Function }` | `console` | Override default logging methods |
+| `logger` | `{ log: Function, error: Function }` | `console` | Override default logging methods; must provide `log` and `error` functions |
 | `onProgress` | `(pct: number, eta?: string) => void` | `undefined` | Callback for progress percentage and optional ETA parsed from output; logs include pt-osc ETA when available |
 | `statistics` | `boolean` | `false` | Adds `--statistics`; log and collect internal pt-osc counters |
 | `onStatistics` | `(stats: Record<string, number>) => void` | `undefined` | Invoked with parsed statistics object when `statistics` is true |

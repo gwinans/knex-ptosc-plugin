@@ -126,6 +126,22 @@ describe('knex-ptosc-plugin', () => {
       expect(consoleSpy).not.toHaveBeenCalled();
     });
 
+    it('throws when logger.log is not a function', async () => {
+      const knex = createKnex();
+      await expect(
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger: { log: true, error: () => {} } })
+      ).rejects.toThrow(/logger\.log must be a function/);
+      expect(spawnSpy).not.toHaveBeenCalled();
+    });
+
+    it('throws when logger.error is not a function', async () => {
+      const knex = createKnex();
+      await expect(
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { logger: { log: () => {}, error: true } })
+      ).rejects.toThrow(/logger\.error must be a function/);
+      expect(spawnSpy).not.toHaveBeenCalled();
+    });
+
     it('surfaces pt-osc errors with code and output', async () => {
       const knex = createKnex();
       spawnSpy.mockImplementationOnce(() => {
