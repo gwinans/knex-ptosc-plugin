@@ -73,6 +73,27 @@ describe('alterTableWithPtoscRaw', () => {
     expect(spawnSyncSpy).not.toHaveBeenCalled();
   });
 
+  it('supports additional pt-osc flags', async () => {
+    const knex = createKnex();
+    await alterTableWithPtoscRaw(
+      knex,
+      'ALTER TABLE `users` ADD COLUMN `age` INT',
+      {
+        analyzeBeforeSwap: false,
+        checkReplicaLag: true,
+        maxLag: 10,
+        chunkSize: 2000
+      }
+    );
+    const args = spawnSpy.mock.calls[0][1];
+    expect(args).toContain('--noanalyze-before-swap');
+    expect(args).toContain('--check-replica-lag');
+    const lagIdx = args.indexOf('--max-lag');
+    expect(args[lagIdx + 1]).toBe('10');
+    const sizeIdx = args.indexOf('--chunk-size');
+    expect(args[sizeIdx + 1]).toBe('2000');
+  });
+
   it('rejects non-ALTER statements', async () => {
     const knex = createKnex();
     await expect(alterTableWithPtoscRaw(knex, 'SELECT 1')).rejects.toThrow(/Only ALTER TABLE/);
