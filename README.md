@@ -163,6 +163,7 @@ end-to-end behavior.
 ---
 
 ## Example Migration
+### CommonJS
 
 ```js
 const { alterTableWithPtosc } = require('knex-ptosc-plugin');
@@ -178,6 +179,24 @@ exports.down = function (knex) {
     table.integer('qty').alter();
   });
 };
+```
+
+### ESM
+
+```js
+import { alterTableWithPtosc } from 'knex-ptosc-plugin';
+
+export function up(knex) {
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.bigInteger('qty').alter();
+  });
+}
+
+export function down(knex) {
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.integer('qty').alter();
+  });
+}
 ```
 
 ---
