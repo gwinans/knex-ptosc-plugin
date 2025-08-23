@@ -205,10 +205,10 @@ describe('knex-ptosc-plugin', () => {
       expect(stderrCall[0]).toContain('err1\nerr2');
     });
 
-    it('passes maxBuffer to spawn', async () => {
+    it('does not pass maxBuffer to spawn', async () => {
       const knex = createKnex();
       await alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { maxBuffer: 1024 });
-      expect(spawnSpy.mock.calls[0][2].maxBuffer).toBe(1024);
+      expect(spawnSpy.mock.calls[0][2].maxBuffer).toBeUndefined();
     });
 
     it('rejects when chunkSize is non-positive', async () => {

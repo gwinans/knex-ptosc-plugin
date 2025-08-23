@@ -111,7 +111,7 @@ export async function runPtoscProcess({
   }
 
   const result = await new Promise((resolve, reject) => {
-    const child = childProcess.spawn(resolvedPath, args, { env, maxBuffer });
+    const child = childProcess.spawn(resolvedPath, args, { env });
 
     let stdout = '';
     let stderr = '';
