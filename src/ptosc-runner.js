@@ -120,6 +120,20 @@ export async function runPtoscProcess({
     let stdoutLine = '';
     let stderrLine = '';
 
+    function parseProgressLines(source, isErr) {
+      const lines = source.split(/\r?\n|\r/);
+      const last = lines.pop();
+      lines.forEach(line => {
+        if (!line) return;
+        if (debug) {
+          if (isErr) logger.error(line); else logger.log(line);
+        }
+        const m = line.match(progressRegex);
+        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
+      });
+      return last;
+    }
+
     function handleChunk(chunk, isErr) {
       const str = chunk.toString();
       total += Buffer.byteLength(str);
@@ -131,25 +145,11 @@ export async function runPtoscProcess({
         return reject(error);
       }
 
-      const lines = (isErr ? stderrLine : stdoutLine) + str;
-      const split = lines.split(/\r?\n|\r/);
       if (isErr) {
-        stderrLine = split.pop();
-        split.forEach(line => {
-          if (!line) return;
-          if (debug) logger.error(line);
-          const m = line.match(progressRegex);
-          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
-        });
+        stderrLine = parseProgressLines(stderrLine + str, true);
         stderr += str;
       } else {
-        stdoutLine = split.pop();
-        split.forEach(line => {
-          if (!line) return;
-          if (debug) logger.log(line);
-          const m = line.match(progressRegex);
-          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
-        });
+        stdoutLine = parseProgressLines(stdoutLine + str, false);
         stdout += str;
       }
     }
@@ -175,14 +175,10 @@ export async function runPtoscProcess({
 
     child.on('close', (code) => {
       if (stdoutLine) {
-        if (debug) logger.log(stdoutLine);
-        const m = stdoutLine.match(progressRegex);
-        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
+        parseProgressLines(stdoutLine + '\n', false);
       }
       if (stderrLine) {
-        if (debug) logger.error(stderrLine);
-        const m = stderrLine.match(progressRegex);
-        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
+        parseProgressLines(stderrLine + '\n', true);
       }
       if (code) {
         logger.error(`pt-online-schema-change failed with code ${code}`);
