@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### 2025-08-23:
+
+**0.2.12**
+
+- Remove ineffective `maxBuffer` option from `child_process.spawn`.
+
 ### 2025-08-22:
 
 **0.2.11**
