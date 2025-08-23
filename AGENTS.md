@@ -6,6 +6,7 @@ General Instructions:
 README.md instructions:
 
 - Ensure the README.md is always up to date with any changes.
+- Ensure the examples have at least one option set.
 
 CHANGELOG.md Instruction:
 
