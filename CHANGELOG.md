@@ -1,18 +1,21 @@
 # CHANGELOG
 
-### 2025-08-22 - 0.2.7:
+### 2025-08-22:
+
+**0.2.7**
 
 - Changed default `ptoscMinRows` to 0.
 
-### 2025-08-22 - 0.2.6:
+**0.2.6:**
 
-- Added `ptoscMinRows` option to run native `ALTER TABLE` when table rows are below a threshold.
+- Added `ptoscMinRows` option to run native `ALTER TABLE` when table rows are
+  below a threshold.
 
-### 2025-08-22 - 0.2.5:
+**0.2.5:**
 
 - Pass pt-osc ETA through the `onProgress` callback.
 
-### 2025-08-22 - 0.2.4:
+**0.2.4:**
 
 - Catches error 4092 and forces the alter to run through
   `pt-online-schema-change`.
