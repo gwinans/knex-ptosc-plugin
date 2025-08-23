@@ -132,7 +132,7 @@ export async function runPtoscProcess({
       }
 
       const lines = (isErr ? stderrLine : stdoutLine) + str;
-      const split = lines.split(/\r?\n/);
+      const split = lines.split(/\r?\n|\r/);
       if (isErr) {
         stderrLine = split.pop();
         split.forEach(line => {
@@ -197,7 +197,7 @@ export async function runPtoscProcess({
       }
       const combined = `${stdout}\n${stderr}`;
       const stats = {};
-      combined.split(/\r?\n/).forEach(line => {
+      combined.split(/\r?\n|\r/).forEach(line => {
         const m = line.match(/^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/);
         if (m) {
           stats[m[1].trim()] = Number(m[2]);

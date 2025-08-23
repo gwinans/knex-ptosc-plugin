@@ -2,6 +2,10 @@
 
 ### 2025-08-22:
 
+**0.2.9**
+
+- Parse progress updates delimited by carriage returns and from stderr.
+
 **0.2.8**
 
 - Added `alterTableWithPtoscRaw` to run raw `ALTER TABLE` statements.
