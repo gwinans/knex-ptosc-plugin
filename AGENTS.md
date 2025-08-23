@@ -1,3 +1,7 @@
+General Instructions:
+
+- Use America/Phoenix as the timezone to get the date.
+
 README.md instructions:
 
 - Ensure the README.md is always up to date with any changes.
