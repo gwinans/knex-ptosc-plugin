@@ -251,6 +251,60 @@ describe('knex-ptosc-plugin', () => {
       expect(spawnSpy).not.toHaveBeenCalled();
     });
 
+    const positiveIntOptions = ['criticalLoad', 'checkInterval', 'chunkIndexColumns', 'maxLag', 'maxBuffer'];
+    for (const opt of positiveIntOptions) {
+      it(`rejects when ${opt} is non-positive`, async () => {
+        const knex = createKnex();
+        await expect(
+          alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { [opt]: 0 })
+        ).rejects.toThrow(new RegExp(`${opt} must be a positive integer`));
+        expect(spawnSpy).not.toHaveBeenCalled();
+      });
+    }
+
+    const positiveNumberOptions = ['chunkSizeLimit', 'chunkTime'];
+    for (const opt of positiveNumberOptions) {
+      it(`rejects when ${opt} is non-positive`, async () => {
+        const knex = createKnex();
+        await expect(
+          alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { [opt]: 0 })
+        ).rejects.toThrow(new RegExp(`${opt} must be a positive number`));
+        expect(spawnSpy).not.toHaveBeenCalled();
+      });
+    }
+
+    const booleanOptions = [
+      'analyzeBeforeSwap',
+      'checkAlter',
+      'checkForeignKeys',
+      'checkPlan',
+      'checkReplicationFilters',
+      'checkReplicaLag',
+      'dropNewTable',
+      'dropOldTable',
+      'dropTriggers',
+      'checkUniqueKeyChange',
+      'statistics',
+      'forcePtosc'
+    ];
+    for (const opt of booleanOptions) {
+      it(`rejects when ${opt} is not boolean`, async () => {
+        const knex = createKnex();
+        await expect(
+          alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { [opt]: 'yes' })
+        ).rejects.toThrow(new RegExp(`${opt} must be a boolean`));
+        expect(spawnSpy).not.toHaveBeenCalled();
+      });
+    }
+
+    it('rejects when ptoscMinRows is negative', async () => {
+      const knex = createKnex();
+      await expect(
+        alterTableWithPtosc(knex, 'users', (t) => { t.string('age'); }, { ptoscMinRows: -1 })
+      ).rejects.toThrow(/ptoscMinRows must be a non-negative integer/);
+      expect(spawnSpy).not.toHaveBeenCalled();
+    });
+
     it('emits progress updates', async () => {
       const knex = createKnex();
       const onProgress = vi.fn();
