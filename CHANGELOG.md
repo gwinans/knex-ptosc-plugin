@@ -5,6 +5,7 @@
 **0.2.12**
 
 - Remove ineffective `maxBuffer` option from `child_process.spawn`.
+- Test `ptoscMinRows` bypass and `chunkSize` forwarding in `alterTableWithPtoscRaw`.
 
 ### 2025-08-22:
 
