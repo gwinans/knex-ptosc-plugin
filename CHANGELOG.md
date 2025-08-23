@@ -2,6 +2,10 @@
 
 ### 2025-08-22:
 
+**0.2.8**
+
+- Added `alterTableWithPtoscRaw` to run raw `ALTER TABLE` statements.
+
 **0.2.7**
 
 - Changed default `ptoscMinRows` to 0.

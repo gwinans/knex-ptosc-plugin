@@ -308,3 +308,42 @@ export async function alterTableWithPtosc(knex, tableName, alterCallback, option
   }
   return stats.length ? stats : undefined;
 }
+
+export async function alterTableWithPtoscRaw(knex, ...args) {
+  let options = {};
+  if (args.length === 0) {
+    throw new Error('No SQL statements provided.');
+  }
+  if (typeof args[args.length - 1] === 'object' && typeof args[args.length - 1] !== 'string') {
+    options = args.pop();
+  }
+  const sqls = args.flat().map(sql => String(sql).trim()).filter(Boolean);
+  if (sqls.length === 0) {
+    throw new Error('No SQL statements provided.');
+  }
+
+  const { release } = await acquireMigrationLock(knex, options);
+  const stats = [];
+  try {
+    for (const fullAlter of sqls) {
+      if (!/^ALTER\s+TABLE\b/i.test(fullAlter)) {
+        throw new Error(`Only ALTER TABLE statements are supported: ${fullAlter}`);
+      }
+      const m = fullAlter.match(/^ALTER\s+TABLE\s+(`?(?:[^`.\s]+`?\.)?`?[^`\s]+`?)\s+(.*)$/i);
+      if (!m) {
+        throw new Error(`Unable to parse ALTER TABLE statement: ${fullAlter}`);
+      }
+      const table = m[1];
+      const clause = m[2];
+      if (/\b(ADD|DROP)\s+(?:UNIQUE\s+)?(?:INDEX|KEY)\b/i.test(clause)) {
+        await knex.raw(fullAlter);
+        continue;
+      }
+      const s = await runAlterClause(knex, table, clause, options);
+      if (s) stats.push(s);
+    }
+  } finally {
+    await release();
+  }
+  return stats.length ? stats : undefined;
+}

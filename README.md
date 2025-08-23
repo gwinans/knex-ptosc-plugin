@@ -19,9 +19,10 @@ using
 
 This plugin offers an alternative to the normal schema builder, routing the
 `.alterTable()` builder through **pt-online-schema-change** so changes can be
-executed with minimal locking and downtime. Direct raw `ALTER TABLE` strings
-are not supported. For operations that can be run INSTANT in the engine,
-`pt-osc` will not be invoked; instead knex will handle it.
+executed with minimal locking and downtime. It also exposes
+`alterTableWithPtoscRaw` for executing raw `ALTER TABLE` statements. For
+operations that can be run INSTANT in the engine, `pt-osc` will not be invoked;
+instead knex will handle it.
 
 **Github Repo:** https://github.com/gwinans/knex-ptosc-plugin
 
@@ -42,8 +43,8 @@ Please, come contribute! Star the project!
   Table names can be customized with `migrationsTable` and
   `migrationsLockTable`.
 - **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
-- **Full ALTER support**: Uses Knex’s `.alterTable()` builder syntax; raw
-  `ALTER` strings are not supported.
+- **Full ALTER support**: Works with Knex’s `.alterTable()` builder or raw
+  `ALTER TABLE` strings via `alterTableWithPtoscRaw`.
 - **Respects Knex bindings**: Correctly interpolates values from `.toSQL()`
   output.
 - **Instant alters when possible**: Attempts native
@@ -199,6 +200,19 @@ export function down(knex) {
   return alterTableWithPtosc(knex, 'widgets', (table) => {
     table.integer('qty').alter();
   });
+}
+```
+
+### Raw SQL
+
+```js
+import { alterTableWithPtoscRaw } from 'knex-ptosc-plugin';
+
+export function up(knex) {
+  return alterTableWithPtoscRaw(
+    knex,
+    'ALTER TABLE widgets ALTER COLUMN qty TYPE BIGINT'
+  );
 }
 ```
 
