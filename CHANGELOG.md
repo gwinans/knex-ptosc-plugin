@@ -2,6 +2,10 @@
 
 ### 2025-08-22:
 
+**0.2.11**
+
+- Test caching of `resolvePtoscPath` to avoid redundant path lookups.
+
 **0.2.10**
 
 - Test option handling in `alterTableWithPtoscRaw`.
