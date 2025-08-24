@@ -50,6 +50,13 @@ describe('index clause passthrough', () => {
     expect(runPtoscProcess).not.toHaveBeenCalled();
   });
 
+  it('runs ADD UNIQUE KEY via alterTableWithPtoscRaw', async () => {
+    const knex = createKnexMockRaw();
+    await alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD UNIQUE KEY idx_foo (foo)');
+    expect(knex.raw).toHaveBeenCalledWith('ALTER TABLE widgets ADD UNIQUE KEY idx_foo (foo)');
+    expect(runPtoscProcess).not.toHaveBeenCalled();
+  });
+
   it('runs DROP INDEX via alterTableWithPtoscRaw', async () => {
     const knex = createKnexMockRaw();
     await alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets DROP INDEX idx_foo');
