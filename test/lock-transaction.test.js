@@ -4,30 +4,25 @@ let createKnex;
 vi.mock('knex', () => ({ default: (...args) => createKnex(...args) }));
 
 describe('acquireMigrationLock within transaction', () => {
-  it('uses a separate connection outside the transaction', async () => {
-    const externalKnex = vi.fn();
-    externalKnex.schema = { hasTable: vi.fn().mockResolvedValue(true) };
-    externalKnex.destroy = vi.fn().mockResolvedValue();
+  it('returns a no-op release when the lock is already held', async () => {
+    createKnex = vi.fn(() => {
+      throw new Error('should not be called');
+    });
+
     const qb = {
-      where: vi.fn().mockReturnThis(),
-      update: vi.fn().mockResolvedValue(1),
       select: vi.fn().mockReturnThis(),
       first: vi.fn().mockResolvedValue({ is_locked: 1 }),
     };
-    externalKnex.mockReturnValue(qb);
-    createKnex = vi.fn(() => externalKnex);
+    const trx = vi.fn().mockReturnValue(qb);
+    trx.isTransaction = true;
+    trx.schema = { hasTable: vi.fn().mockResolvedValue(true) };
+    trx.client = { config: { client: 'mock' } };
 
     const { acquireMigrationLock } = await import('../src/lock.js');
 
-    const trx = vi.fn();
-    trx.isTransaction = true;
-    trx.client = { config: { client: 'mock' } };
-
     const lock = await acquireMigrationLock(trx);
-    expect(createKnex).toHaveBeenCalledWith(trx.client.config);
-    expect(externalKnex).toHaveBeenCalled();
+    expect(createKnex).not.toHaveBeenCalled();
+    expect(trx).toHaveBeenCalledWith('knex_migrations_lock');
     await lock.release();
-    expect(externalKnex.destroy).toHaveBeenCalled();
-    expect(trx).not.toHaveBeenCalled();
   });
 });
