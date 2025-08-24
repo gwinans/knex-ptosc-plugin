@@ -16,73 +16,54 @@ export async function acquireMigrationLock(
     logger = console,
   } = {},
 ) {
-  let rootKnex;
-  let runner = knex;
-  try {
-    if (knex.isTransaction) {
-      const { knex: createKnex } = await import('knex');
-      rootKnex = createKnex(knex.client.config);
-      runner = rootKnex;
+  const hasMigrationsTable = await knex.schema.hasTable(migrationsTable);
+  const hasLockTable = await knex.schema.hasTable(migrationsLockTable);
+
+  if (!hasMigrationsTable || !hasLockTable) {
+    throw new Error(
+      'Required Knex migration tables do not exist. ' +
+      `Ensure ${migrationsTable} and ${migrationsLockTable} are created before running pt-osc migrations.`
+    );
+  }
+
+  const start = Date.now();
+  let changedRow = false;
+
+  while (Date.now() - start <= timeoutMs) {
+    const updated = await knex(migrationsLockTable)
+      .where({ is_locked: 0 })
+      .update({ is_locked: 1 })
+      .catch(() => 0);
+
+    if (updated === 1) {
+      changedRow = true;
+      break;
     }
 
-    const hasMigrationsTable = await runner.schema.hasTable(migrationsTable);
-    const hasLockTable = await runner.schema.hasTable(migrationsLockTable);
+    await sleep(intervalMs);
+  }
 
-    if (!hasMigrationsTable || !hasLockTable) {
-      throw new Error(
-        'Required Knex migration tables do not exist. ' +
-        `Ensure ${migrationsTable} and ${migrationsLockTable} are created before running pt-osc migrations.`
-      );
+  if (!changedRow) {
+    const lockRow = await knex(migrationsLockTable)
+      .select('is_locked')
+      .first()
+      .catch(() => ({ is_locked: 0 }));
+
+    if (lockRow.is_locked === 1) {
+      throw new Error(`Timeout acquiring ${migrationsLockTable}`);
     }
+  }
 
-    const start = Date.now();
-    let changedRow = false;
-
-    while (Date.now() - start <= timeoutMs) {
-      const updated = await runner(migrationsLockTable)
-        .where({ is_locked: 0 })
-        .update({ is_locked: 1 })
-        .catch(() => 0);
-
-      if (updated === 1) {
-        changedRow = true;
-        break;
-      }
-
-      await sleep(intervalMs);
-    }
-
-    if (!changedRow) {
-      const lockRow = await runner(migrationsLockTable)
-        .select('is_locked')
-        .first()
-        .catch(() => ({ is_locked: 0 }));
-
-      if (lockRow.is_locked === 1) {
-        throw new Error(`Timeout acquiring ${migrationsLockTable}`);
-      }
-    }
-
-    return {
-      release: async () => {
-        if (!changedRow) {
-          if (rootKnex) await rootKnex.destroy();
-          return;
-        }
-        try {
-          await runner(migrationsLockTable)
-            .where({ is_locked: 1 })
-            .update({ is_locked: 0 });
-        } catch (err) {
+  return {
+    release: async () => {
+      if (!changedRow) return;
+      await knex(migrationsLockTable)
+        .where({ is_locked: 1 })
+        .update({ is_locked: 0 })
+        .catch((err) => {
           logger.error('Failed to release migration lock', err);
           throw err;
-        } finally {
-          if (rootKnex) await rootKnex.destroy();
-        }
-      },
-    };
-  } catch (err) {
-    if (rootKnex) await rootKnex.destroy();
-    throw err;
-  }
+        });
+    },
+  };
 }
