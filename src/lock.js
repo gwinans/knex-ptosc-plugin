@@ -1,3 +1,5 @@
+import Knex from 'knex';
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -20,10 +22,7 @@ export async function acquireMigrationLock(
   let runner = knex;
   try {
     if (knex.isTransaction) {
-      const { default: createKnex } = await import('knex').catch(() => {
-        throw new Error('knex package is required to acquire migration lock within a transaction');
-      });
-      rootKnex = createKnex(knex.client.config);
+      rootKnex = Knex(knex.client.config);
       runner = rootKnex;
     }
 
