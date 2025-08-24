@@ -2,6 +2,10 @@
 
 ### 2025-08-23:
 
+**0.2.14**
+
+- Instantiate a new Knex connection via `knex.constructor` to avoid dynamic import failures.
+
 **0.2.13**
 
 - Declare `knex` as a peer dependency to prevent runtime module resolution errors.
