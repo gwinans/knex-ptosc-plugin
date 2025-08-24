@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -20,8 +22,9 @@ export async function acquireMigrationLock(
   let runner = knex;
   try {
     if (knex.isTransaction) {
-      const createKnex = knex.constructor;
-      rootKnex = createKnex(knex.client.config);
+      const requireFromCwd = createRequire(process.cwd() + '/');
+      const Knex = requireFromCwd('knex');
+      rootKnex = Knex(knex.client.config);
       runner = rootKnex;
     }
 
