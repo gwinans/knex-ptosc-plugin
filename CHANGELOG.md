@@ -5,6 +5,7 @@
 **0.2.13**
 
 - Added tests for ptoscMinRows fast path, INSTANT fallback scenarios, and index clause passthrough.
+- Added tests verifying migration lock handling and statistics aggregation for multiple ALTER clauses.
 
 ### 2025-08-23:
 
