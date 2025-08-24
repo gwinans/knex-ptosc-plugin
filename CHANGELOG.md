@@ -2,6 +2,10 @@
 
 ### 2025-08-23:
 
+**0.2.12**
+
+- Added tests for caching and error handling in `resolvePtoscPath`.
+
 **0.2.11**
 
 - Check migration and lock tables concurrently when acquiring the migration lock.
