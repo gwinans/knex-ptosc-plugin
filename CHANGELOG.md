@@ -1,32 +1,6 @@
 # CHANGELOG
 
-### 2025-08-23:
-
-**0.2.13**
-
-- Stream statistics line-by-line and invoke `onStatistics` for each update.
-
-**0.2.12**
-
-- Remove ineffective `maxBuffer` option from `child_process.spawn`.
-- Test `ptoscMinRows` bypass and `chunkSize` forwarding in `alterTableWithPtoscRaw`.
-- Extract progress line parsing helper for stdout and stderr.
-- Wait for existing migration locks to clear instead of treating them as acquired.
-- Validate logger methods and throw if they are not functions.
-
 ### 2025-08-22:
-
-**0.2.11**
-
-- Test caching of `resolvePtoscPath` to avoid redundant path lookups.
-
-**0.2.10**
-
-- Test option handling in `alterTableWithPtoscRaw`.
-
-**0.2.9**
-
-- Parse progress updates delimited by carriage returns and from stderr.
 
 **0.2.8**
 

@@ -101,13 +101,6 @@ export async function runPtoscProcess({
   onStatistics,
   printCommand = true,
 }) {
-  if (typeof logger.log !== 'function') {
-    throw new TypeError('logger.log must be a function');
-  }
-  if (typeof logger.error !== 'function') {
-    throw new TypeError('logger.error must be a function');
-  }
-
   const debug = isDebugEnabled();
   const resolvedPath = resolvePtoscPath(ptoscPath);
   const env = { ...process.env };
@@ -118,35 +111,14 @@ export async function runPtoscProcess({
   }
 
   const result = await new Promise((resolve, reject) => {
-    const child = childProcess.spawn(resolvedPath, args, { env });
+    const child = childProcess.spawn(resolvedPath, args, { env, maxBuffer });
 
     let stdout = '';
     let stderr = '';
     let total = 0;
     const progressRegex = /\b(\d{1,3}(?:\.\d+)?)%(?:\s+(\d+:\d+(?::\d+)?)\s+remain)?/;
-    const statsRegex = /^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/;
     let stdoutLine = '';
     let stderrLine = '';
-    const stats = {};
-
-    function parseProgressLines(source, isErr) {
-      const lines = source.split(/\r?\n|\r/);
-      const last = lines.pop();
-      lines.forEach(line => {
-        if (!line) return;
-        if (debug) {
-          if (isErr) logger.error(line); else logger.log(line);
-        }
-        const m = line.match(progressRegex);
-        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
-        const s = line.match(statsRegex);
-        if (s) {
-          stats[s[1].trim()] = Number(s[2]);
-          if (onStatistics) onStatistics({ ...stats });
-        }
-      });
-      return last;
-    }
 
     function handleChunk(chunk, isErr) {
       const str = chunk.toString();
@@ -159,11 +131,25 @@ export async function runPtoscProcess({
         return reject(error);
       }
 
+      const lines = (isErr ? stderrLine : stdoutLine) + str;
+      const split = lines.split(/\r?\n/);
       if (isErr) {
-        stderrLine = parseProgressLines(stderrLine + str, true);
+        stderrLine = split.pop();
+        split.forEach(line => {
+          if (!line) return;
+          if (debug) logger.error(line);
+          const m = line.match(progressRegex);
+          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
+        });
         stderr += str;
       } else {
-        stdoutLine = parseProgressLines(stdoutLine + str, false);
+        stdoutLine = split.pop();
+        split.forEach(line => {
+          if (!line) return;
+          if (debug) logger.log(line);
+          const m = line.match(progressRegex);
+          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
+        });
         stdout += str;
       }
     }
@@ -189,10 +175,14 @@ export async function runPtoscProcess({
 
     child.on('close', (code) => {
       if (stdoutLine) {
-        parseProgressLines(stdoutLine + '\n', false);
+        if (debug) logger.log(stdoutLine);
+        const m = stdoutLine.match(progressRegex);
+        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
       }
       if (stderrLine) {
-        parseProgressLines(stderrLine + '\n', true);
+        if (debug) logger.error(stderrLine);
+        const m = stderrLine.match(progressRegex);
+        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
       }
       if (code) {
         logger.error(`pt-online-schema-change failed with code ${code}`);
@@ -205,13 +195,23 @@ export async function runPtoscProcess({
         error.stderr = stderr;
         return reject(error);
       }
+      const combined = `${stdout}\n${stderr}`;
+      const stats = {};
+      combined.split(/\r?\n/).forEach(line => {
+        const m = line.match(/^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/);
+        if (m) {
+          stats[m[1].trim()] = Number(m[2]);
+        }
+      });
       const statsCopy = { ...stats };
-      if (Object.keys(statsCopy).length > 0) {
+      const hasStats = Object.keys(statsCopy).length > 0;
+      if (hasStats) {
         logger.log(
           `[PT-OSC] Statistics: ${Object.entries(statsCopy)
             .map(([k, v]) => `${k}=${v}`)
             .join(', ')}`
         );
+        if (onStatistics) onStatistics(statsCopy);
       }
       resolve({ stdout, stderr, statistics: statsCopy });
     });

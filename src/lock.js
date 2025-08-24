@@ -27,36 +27,40 @@ export async function acquireMigrationLock(
   }
 
   const start = Date.now();
+  let acquired = false;
   let changedRow = false;
 
-  while (Date.now() - start <= timeoutMs) {
+  while (!acquired) {
     const updated = await knex(migrationsLockTable)
       .where({ is_locked: 0 })
       .update({ is_locked: 1 })
       .catch(() => 0);
 
     if (updated === 1) {
+      acquired = true;
       changedRow = true;
       break;
     }
 
-    await sleep(intervalMs);
-  }
-
-  if (!changedRow) {
     const lockRow = await knex(migrationsLockTable)
       .select('is_locked')
       .first()
       .catch(() => ({ is_locked: 0 }));
 
     if (lockRow.is_locked === 1) {
+      acquired = true;
+      break;
+    }
+
+    if (Date.now() - start > timeoutMs) {
       throw new Error(`Timeout acquiring ${migrationsLockTable}`);
     }
+    await sleep(intervalMs);
   }
 
   return {
     release: async () => {
-      if (!changedRow) return;
+      if (!acquired || !changedRow) return;
       await knex(migrationsLockTable)
         .where({ is_locked: 1 })
         .update({ is_locked: 0 })
