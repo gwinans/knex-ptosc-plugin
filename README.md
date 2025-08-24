@@ -40,8 +40,6 @@ Please, come contribute! Star the project!
   environment variable (never on the command line or in logs).
 - **Atomic migration lock**: Uses Knex’s migrations lock row
   (`knex_migrations_lock` by default) to prevent concurrent schema changes.
-  When run inside a transaction, lock queries execute on a separate
-  connection so the change is immediately visible to other sessions.
   Concurrent callers wait until the lock is released or the timeout elapses.
   Table names can be customized with `migrationsTable` and
   `migrationsLockTable`.
