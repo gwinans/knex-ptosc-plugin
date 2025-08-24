@@ -5,6 +5,7 @@
 **0.2.11**
 
 - Check migration and lock tables concurrently when acquiring the migration lock.
+- Added Vitest tests for debug environment detection.
 
 **0.2.10**
 
