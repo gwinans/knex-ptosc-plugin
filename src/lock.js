@@ -25,10 +25,8 @@ export async function acquireMigrationLock(
       runner = rootKnex;
     }
 
-    const [hasMigrationsTable, hasLockTable] = await Promise.all([
-      runner.schema.hasTable(migrationsTable),
-      runner.schema.hasTable(migrationsLockTable),
-    ]);
+    const hasMigrationsTable = await runner.schema.hasTable(migrationsTable);
+    const hasLockTable = await runner.schema.hasTable(migrationsLockTable);
 
     if (!hasMigrationsTable || !hasLockTable) {
       throw new Error(
