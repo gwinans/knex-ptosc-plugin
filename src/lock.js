@@ -19,6 +19,14 @@ export async function acquireMigrationLock(
   let rootKnex;
   let runner = knex;
   try {
+    if (knex.isTransaction) {
+      const { default: createKnex } = await import('knex').catch(() => {
+        throw new Error('knex package is required to acquire migration lock within a transaction');
+      });
+      rootKnex = createKnex(knex.client.config);
+      runner = rootKnex;
+    }
+
     const [hasMigrationsTable, hasLockTable] = await Promise.all([
       runner.schema.hasTable(migrationsTable),
       runner.schema.hasTable(migrationsLockTable),
@@ -29,23 +37,6 @@ export async function acquireMigrationLock(
         'Required Knex migration tables do not exist. ' +
         `Ensure ${migrationsTable} and ${migrationsLockTable} are created before running pt-osc migrations.`
       );
-    }
-
-    if (knex.isTransaction) {
-      const lockRow = await knex(migrationsLockTable)
-        .select('is_locked')
-        .first()
-        .catch(() => ({ is_locked: 0 }));
-
-      if (lockRow.is_locked === 1) {
-        return { release: async () => {} };
-      }
-
-      const { default: createKnex } = await import('knex').catch(() => {
-        throw new Error('knex package is required to acquire migration lock within a transaction');
-      });
-      rootKnex = createKnex(knex.client.config);
-      runner = rootKnex;
     }
 
     const start = Date.now();
