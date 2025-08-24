@@ -2,8 +2,13 @@
 
 ### 2025-08-23:
 
+**0.2.14**
+
+- Instantiate a new Knex connection via `knex.constructor` to avoid dynamic import failures.
+
 **0.2.13**
 
+- Declare `knex` as a peer dependency to prevent runtime module resolution errors.
 - Stream statistics line-by-line and invoke `onStatistics` for each update.
 - Validate numeric and boolean options via helper functions.
 - Acquire migration lock on a non-transactional connection when invoked within a transaction.

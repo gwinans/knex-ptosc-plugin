@@ -72,8 +72,10 @@ long-past End-of-Life.
 
 ## Installation
 
+This plugin declares `knex` as a peer dependency. Install it alongside the plugin:
+
 ```sh
-npm install knex-ptosc-plugin
+npm install knex knex-ptosc-plugin
 ```
 
 ---
