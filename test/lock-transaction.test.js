@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-
-let createKnex;
-vi.mock('knex', () => ({ default: (...args) => createKnex(...args) }));
+import { acquireMigrationLock } from '../src/lock.js';
 
 describe('acquireMigrationLock within transaction', () => {
   it('uses a separate connection outside the transaction', async () => {
@@ -15,13 +13,12 @@ describe('acquireMigrationLock within transaction', () => {
       first: vi.fn().mockResolvedValue({ is_locked: 1 }),
     };
     externalKnex.mockReturnValue(qb);
-    createKnex = vi.fn(() => externalKnex);
-
-    const { acquireMigrationLock } = await import('../src/lock.js');
+    const createKnex = vi.fn(() => externalKnex);
 
     const trx = vi.fn();
     trx.isTransaction = true;
-    trx.client = { config: { client: 'mock' } };
+    trx.client = { config: {} };
+    trx.constructor = createKnex;
 
     const lock = await acquireMigrationLock(trx);
     expect(createKnex).toHaveBeenCalledWith(trx.client.config);
