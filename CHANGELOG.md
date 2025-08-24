@@ -5,6 +5,7 @@
 **0.2.12**
 
 - Added tests for caching and error handling in `resolvePtoscPath`.
+- Added tests for `runPtoscProcess` progress reporting, statistics parsing, and error handling.
 
 **0.2.11**
 
