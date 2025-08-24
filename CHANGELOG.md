@@ -5,6 +5,7 @@
 **0.2.16**
 
 - Lazily import Knex to avoid module resolution errors when not installed.
+- Skip re-acquiring the migration lock when it's already held within a transaction.
 
 **0.2.15**
 
