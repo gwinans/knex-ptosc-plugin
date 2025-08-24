@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { acquireMigrationLock } from '../src/lock.js';
 
 function createKnexMock(initial = 0) {
@@ -73,4 +73,15 @@ describe('acquireMigrationLock', () => {
     await release();
     expect(knex._state.is_locked).toBe(0);
   });
+
+  it.each(['knex_migrations', 'knex_migrations_lock'])(
+    'throws if %s table is missing',
+    async (missingTable) => {
+      const knex = createKnexMock(0);
+      knex.schema.hasTable = vi.fn(async (table) => table !== missingTable);
+      await expect(acquireMigrationLock(knex)).rejects.toThrow(
+        'Required Knex migration tables do not exist. Ensure knex_migrations and knex_migrations_lock are created before running pt-osc migrations.',
+      );
+    },
+  );
 });

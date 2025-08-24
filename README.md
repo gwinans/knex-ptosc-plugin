@@ -41,7 +41,8 @@ Please, come contribute! Star the project!
 - **Atomic migration lock**: Uses Knex’s migrations lock row
   (`knex_migrations_lock` by default) to prevent concurrent schema changes.
   Table names can be customized with `migrationsTable` and
-  `migrationsLockTable`.
+  `migrationsLockTable`. Both tables must exist before running migrations;
+  otherwise an error is thrown.
 - **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
 - **Full ALTER support**: Works with Knex’s `.alterTable()` builder or raw
   `ALTER TABLE` strings via `alterTableWithPtoscRaw`.
