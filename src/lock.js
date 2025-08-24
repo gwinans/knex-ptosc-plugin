@@ -1,3 +1,5 @@
+import Knex from 'knex';
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -20,8 +22,7 @@ export async function acquireMigrationLock(
   let runner = knex;
   try {
     if (knex.isTransaction) {
-      const createKnex = knex.constructor;
-      rootKnex = createKnex(knex.client.config);
+      rootKnex = Knex(knex.client.config);
       runner = rootKnex;
     }
 

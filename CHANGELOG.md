@@ -2,6 +2,10 @@
 
 ### 2025-08-23:
 
+**0.2.15**
+
+- Import Knex to create a non-transactional connection when acquiring migration locks.
+
 **0.2.14**
 
 - Instantiate a new Knex connection via `knex.constructor` to avoid dynamic import failures.
