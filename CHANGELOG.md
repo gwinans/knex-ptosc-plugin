@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### 2025-08-24:
+
+**0.2.13**
+
+- Added tests for ptoscMinRows fast path, INSTANT fallback scenarios, and index clause passthrough.
+
 ### 2025-08-23:
 
 **0.2.12**
