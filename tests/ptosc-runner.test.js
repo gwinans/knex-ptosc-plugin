@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { buildPtoscArgs } from '../src/ptosc-runner.js';
+import { describe, it, expect, vi } from 'vitest';
+import childProcess from 'child_process';
+import { buildPtoscArgs, resolvePtoscPath } from '../src/ptosc-runner.js';
 
 describe('buildPtoscArgs', () => {
   it('translates options into pt-osc arguments', () => {
@@ -64,5 +65,33 @@ describe('buildPtoscArgs', () => {
       '--max-lag', '10',
       '--statistics',
     ]);
+  });
+});
+
+describe('resolvePtoscPath', () => {
+  it('caches resolved path to avoid repeated spawnSync calls', () => {
+    const spawnSpy = vi
+      .spyOn(childProcess, 'spawnSync')
+      .mockReturnValue({
+        status: 0,
+        stdout: Buffer.from('/usr/bin/pt-online-schema-change\n'),
+      });
+    const first = resolvePtoscPath('cached-ptosc');
+    const second = resolvePtoscPath('cached-ptosc');
+    expect(first).toBe('/usr/bin/pt-online-schema-change');
+    expect(second).toBe('/usr/bin/pt-online-schema-change');
+    expect(spawnSpy).toHaveBeenCalledTimes(1);
+    spawnSpy.mockRestore();
+  });
+
+  it('throws an error when spawnSync status is non-zero', () => {
+    const spawnSpy = vi
+      .spyOn(childProcess, 'spawnSync')
+      .mockReturnValue({ status: 1, stdout: Buffer.from('') });
+    expect(() => resolvePtoscPath('missing-ptosc')).toThrow(
+      /binary not found: missing-ptosc/
+    );
+    expect(spawnSpy).toHaveBeenCalledTimes(1);
+    spawnSpy.mockRestore();
   });
 });
