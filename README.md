@@ -144,10 +144,11 @@ logged regardless of `DEBUG`, including any trailing lines that lack a newline.
 
 ## Testing
 
-Run `npm test` to execute linting and unit tests. Continuous integration also
-clones the [kpp-test-app](https://github.com/gwinans/kpp-test-app) and runs its
-migrations against a MySQL instance (`root`/`test`, database `ptosc`) to verify
-end-to-end behavior.
+Run `npm test` to execute linting and unit tests. Run `npm run test:coverage`
+to include coverage reporting. Continuous integration also clones the
+[kpp-test-app](https://github.com/gwinans/kpp-test-app) and runs its migrations
+against a MySQL instance (`root`/`test`, database `ptosc`) to verify end-to-end
+behavior.
 
 ---
 
