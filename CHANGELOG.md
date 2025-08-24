@@ -1,5 +1,12 @@
 # CHANGELOG
 
+### 2025-08-23:
+
+**0.2.9**
+
+- Fixed migration lock waiting logic and added Vitest tests for `buildPtoscArgs`
+  options and `acquireMigrationLock` behavior.
+
 ### 2025-08-22:
 
 **0.2.8**
