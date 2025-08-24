@@ -20,7 +20,7 @@ export async function acquireMigrationLock(
   let runner = knex;
   try {
     if (knex.isTransaction) {
-      const createKnex = knex.constructor;
+      const { knex: createKnex } = await import('knex');
       rootKnex = createKnex(knex.client.config);
       runner = rootKnex;
     }
