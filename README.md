@@ -40,7 +40,6 @@ Please, come contribute! Star the project!
   environment variable (never on the command line or in logs).
 - **Atomic migration lock**: Uses Knex’s migrations lock row
   (`knex_migrations_lock` by default) to prevent concurrent schema changes.
-  Concurrent callers wait until the lock is released or the timeout elapses.
   Table names can be customized with `migrationsTable` and
   `migrationsLockTable`.
 - **Dry-run first**: Always runs a pt-osc `--dry-run` before executing.
@@ -107,10 +106,10 @@ npm install knex-ptosc-plugin
 | `checkUniqueKeyChange` | `boolean` | `true` | `--check-unique-key-change` or `--nocheck-unique-key-change` |
 | `maxLag` | `number` | `25` | Passed to `--max-lag` |
 | `maxBuffer` | `number` | `10485760` | `child_process.execFile` `maxBuffer` in bytes |
-| `logger` | `{ log: Function, error: Function }` | `console` | Override default logging methods; must provide `log` and `error` functions |
+| `logger` | `{ log: Function, error: Function }` | `console` | Override default logging methods |
 | `onProgress` | `(pct: number, eta?: string) => void` | `undefined` | Callback for progress percentage and optional ETA parsed from output; logs include pt-osc ETA when available |
 | `statistics` | `boolean` | `false` | Adds `--statistics`; log and collect internal pt-osc counters |
-| `onStatistics` | `(stats: Record<string, number>) => void` | `undefined` | Invoked with the cumulative statistics each time a `# key value` line is parsed when `statistics` is true |
+| `onStatistics` | `(stats: Record<string, number>) => void` | `undefined` | Invoked with parsed statistics object when `statistics` is true |
 | `migrationsTable` | `string` | `'knex_migrations'` | Overrides migrations table name used for lock checks |
 | `migrationsLockTable` | `string` | `'knex_migrations_lock'` | Overrides migrations lock table name used when acquiring lock |
 | `timeoutMs` | `number` | `30000` | Timeout in ms when acquiring migration lock |
@@ -118,20 +117,9 @@ npm install knex-ptosc-plugin
 
 ### Statistics example
 
-When `statistics: true`, pt-online-schema-change prints internal counters as
-`# key value` lines during the run. These are parsed as they arrive. The
-cumulative object is logged, passed to `onStatistics` on every update, and
-returned when the process exits.
-
-```js
-await runPtoscProcess({
-  args: [],
-  statistics: true,
-  onStatistics: stats => console.log(stats),
-});
-```
-
-Example output:
+When `statistics: true`, pt-online-schema-change prints internal counters at the
+end of the run. These are parsed into an object, logged via the provided logger,
+and returned (or sent to `onStatistics`). Example output:
 
 ```
 # Event          Count
@@ -171,8 +159,7 @@ end-to-end behavior.
 - **Password is hidden**: Never appears in process list, logs, or command
   history.
 - **Atomic locks**: Lock acquisition uses `UPDATE ... WHERE is_locked=0` to
-  avoid stealing locks from another process and waits for existing locks to
-  clear before proceeding.
+  avoid stealing locks from another process.
 - **Dry-run first**: Always verifies the migration before execution.
 
 ---
@@ -186,25 +173,15 @@ callback, ensuring all changes use Knex's builder API.
 const { alterTableWithPtosc } = require('knex-ptosc-plugin');
 
 exports.up = function (knex) {
-  return alterTableWithPtosc(
-    knex,
-    'widgets',
-    (table) => {
-      table.bigInteger('qty').alter();
-    },
-    { chunkSize: 5000 }
-  );
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.bigInteger('qty').alter();
+  });
 };
 
 exports.down = function (knex) {
-  return alterTableWithPtosc(
-    knex,
-    'widgets',
-    (table) => {
-      table.integer('qty').alter();
-    },
-    { chunkSize: 5000 }
-  );
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.integer('qty').alter();
+  });
 };
 ```
 
@@ -214,25 +191,15 @@ exports.down = function (knex) {
 import { alterTableWithPtosc } from 'knex-ptosc-plugin';
 
 export function up(knex) {
-  return alterTableWithPtosc(
-    knex,
-    'widgets',
-    (table) => {
-      table.bigInteger('qty').alter();
-    },
-    { chunkSize: 5000 }
-  );
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.bigInteger('qty').alter();
+  });
 }
 
 export function down(knex) {
-  return alterTableWithPtosc(
-    knex,
-    'widgets',
-    (table) => {
-      table.integer('qty').alter();
-    },
-    { chunkSize: 5000 }
-  );
+  return alterTableWithPtosc(knex, 'widgets', (table) => {
+    table.integer('qty').alter();
+  });
 }
 ```
 
@@ -244,8 +211,7 @@ import { alterTableWithPtoscRaw } from 'knex-ptosc-plugin';
 export function up(knex) {
   return alterTableWithPtoscRaw(
     knex,
-    'ALTER TABLE widgets ALTER COLUMN qty TYPE BIGINT',
-    { chunkSize: 5000 }
+    'ALTER TABLE widgets ALTER COLUMN qty TYPE BIGINT'
   );
 }
 ```

@@ -57,13 +57,6 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     onStatistics
   } = options;
 
-  if (typeof logger.log !== 'function') {
-    throw new TypeError('logger.log must be a function');
-  }
-  if (typeof logger.error !== 'function') {
-    throw new TypeError('logger.error must be a function');
-  }
-
   if (maxLoad !== undefined && (!Number.isInteger(maxLoad) || maxLoad <= 0)) {
     throw new TypeError(`maxLoad must be a positive integer, got ${maxLoad}`);
   }
