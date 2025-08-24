@@ -2,6 +2,10 @@
 
 ### 2025-08-23:
 
+**0.2.16**
+
+- Lazily import Knex to avoid module resolution errors when not installed.
+
 **0.2.15**
 
 - Import Knex to create a non-transactional connection when acquiring migration locks.
