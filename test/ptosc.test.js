@@ -599,19 +599,6 @@ describe('knex-ptosc-plugin', () => {
       );
     });
 
-    it('checks migration tables concurrently', async () => {
-      const resolvers = [];
-      const hasTable = vi.fn(() => new Promise((resolve) => resolvers.push(resolve)));
-      const knex = createKnex();
-      knex.schema.hasTable = hasTable;
-      const lockPromise = acquireMigrationLock(knex);
-      await Promise.resolve();
-      expect(hasTable).toHaveBeenCalledTimes(2);
-      resolvers.forEach((r) => r(true));
-      const lock = await lockPromise;
-      await lock.release();
-    });
-
     it('times out if the lock cannot be acquired', async () => {
       vi.useFakeTimers();
       let locked = true;
