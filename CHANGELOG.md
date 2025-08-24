@@ -4,6 +4,7 @@
 
 **0.2.13**
 
+- Declare `knex` as a peer dependency to prevent runtime module resolution errors.
 - Stream statistics line-by-line and invoke `onStatistics` for each update.
 - Validate numeric and boolean options via helper functions.
 - Acquire migration lock on a non-transactional connection when invoked within a transaction.
