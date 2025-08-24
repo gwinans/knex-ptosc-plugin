@@ -2,6 +2,11 @@
 
 ### 2025-08-23:
 
+**0.2.10**
+
+- Handle MySQL error 4092 from `ALGORITHM=INSTANT` by routing the query through
+  `pt-online-schema-change` and add regression test.
+
 **0.2.9**
 
 - Fixed migration lock waiting logic and added Vitest tests for `buildPtoscArgs`

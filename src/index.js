@@ -3,6 +3,7 @@ import { buildPtoscArgs, runPtoscProcess } from './ptosc-runner.js';
 import { isDebugEnabled } from './debug.js';
 
 const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
+const INSTANT_UNSUPPORTED_ERRNOS = [1846, 1847, 4092];
 
 const versionCache = new WeakMap();
 
@@ -242,9 +243,7 @@ async function runAlterClause(knex, table, alterClause, options = {}) {
       } catch (err) {
         const msg = err.message || '';
         if (
-          err.errno === 1846 ||
-          err.errno === 1847 ||
-          err.errno === 4092 ||
+          INSTANT_UNSUPPORTED_ERRNOS.includes(err.errno) ||
           (/ALGORITHM=INSTANT/i.test(msg) && /unsupported|not supported/i.test(msg)) ||
           /Maximum row versions/i.test(msg)
         ) {

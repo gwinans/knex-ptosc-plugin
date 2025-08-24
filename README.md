@@ -173,15 +173,25 @@ callback, ensuring all changes use Knex's builder API.
 const { alterTableWithPtosc } = require('knex-ptosc-plugin');
 
 exports.up = function (knex) {
-  return alterTableWithPtosc(knex, 'widgets', (table) => {
-    table.bigInteger('qty').alter();
-  });
+  return alterTableWithPtosc(
+    knex,
+    'widgets',
+    (table) => {
+      table.bigInteger('qty').alter();
+    },
+    { chunkSize: 500 }
+  );
 };
 
 exports.down = function (knex) {
-  return alterTableWithPtosc(knex, 'widgets', (table) => {
-    table.integer('qty').alter();
-  });
+  return alterTableWithPtosc(
+    knex,
+    'widgets',
+    (table) => {
+      table.integer('qty').alter();
+    },
+    { chunkSize: 500 }
+  );
 };
 ```
 
@@ -191,15 +201,25 @@ exports.down = function (knex) {
 import { alterTableWithPtosc } from 'knex-ptosc-plugin';
 
 export function up(knex) {
-  return alterTableWithPtosc(knex, 'widgets', (table) => {
-    table.bigInteger('qty').alter();
-  });
+  return alterTableWithPtosc(
+    knex,
+    'widgets',
+    (table) => {
+      table.bigInteger('qty').alter();
+    },
+    { chunkSize: 500 }
+  );
 }
 
 export function down(knex) {
-  return alterTableWithPtosc(knex, 'widgets', (table) => {
-    table.integer('qty').alter();
-  });
+  return alterTableWithPtosc(
+    knex,
+    'widgets',
+    (table) => {
+      table.integer('qty').alter();
+    },
+    { chunkSize: 500 }
+  );
 }
 ```
 
@@ -211,7 +231,8 @@ import { alterTableWithPtoscRaw } from 'knex-ptosc-plugin';
 export function up(knex) {
   return alterTableWithPtoscRaw(
     knex,
-    'ALTER TABLE widgets ALTER COLUMN qty TYPE BIGINT'
+    'ALTER TABLE widgets ALTER COLUMN qty TYPE BIGINT',
+    { statistics: true }
   );
 }
 ```
