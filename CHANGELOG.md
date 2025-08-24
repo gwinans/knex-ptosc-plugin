@@ -4,6 +4,7 @@
 
 **0.2.12**
 
+- Added tests ensuring errors are thrown when required migration tables are missing.
 - Added tests for caching and error handling in `resolvePtoscPath`.
 - Added tests for `runPtoscProcess` progress reporting, statistics parsing, and error handling.
 
