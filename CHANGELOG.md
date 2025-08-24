@@ -6,6 +6,7 @@
 
 - Added tests for ptoscMinRows fast path, INSTANT fallback scenarios, and index clause passthrough.
 - Added tests verifying migration lock handling and statistics aggregation for multiple ALTER clauses.
+- Added tests validating error handling for raw SQL inputs and UNIQUE index passthrough.
 
 ### 2025-08-23:
 
