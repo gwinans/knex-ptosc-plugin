@@ -1,12 +1,6 @@
 import { acquireMigrationLock } from './lock.js';
 import { buildPtoscArgs, runPtoscProcess } from './ptosc-runner.js';
 import { isDebugEnabled } from './debug.js';
-import {
-  validatePositiveInt,
-  validatePositiveNumber,
-  validateNonNegativeInt,
-  validateBoolean
-} from './validators.js';
 
 const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
 
@@ -69,27 +63,34 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
   if (typeof logger.error !== 'function') {
     throw new TypeError('logger.error must be a function');
   }
-  validatePositiveInt('maxLoad', maxLoad);
-  validatePositiveInt('criticalLoad', criticalLoad);
-  validatePositiveInt('checkInterval', checkInterval);
-  validatePositiveInt('chunkIndexColumns', chunkIndexColumns);
-  validatePositiveInt('chunkSize', chunkSize);
-  validatePositiveNumber('chunkSizeLimit', chunkSizeLimit);
-  validatePositiveNumber('chunkTime', chunkTime);
-  validatePositiveInt('maxLag', maxLag);
-  validatePositiveInt('maxBuffer', maxBuffer);
 
-  validateBoolean('analyzeBeforeSwap', analyzeBeforeSwap);
-  validateBoolean('checkAlter', checkAlter);
-  validateBoolean('checkForeignKeys', checkForeignKeys);
-  validateBoolean('checkPlan', checkPlan);
-  validateBoolean('checkReplicationFilters', checkReplicationFilters);
-  validateBoolean('checkReplicaLag', checkReplicaLag);
-  validateBoolean('dropNewTable', dropNewTable);
-  validateBoolean('dropOldTable', dropOldTable);
-  validateBoolean('dropTriggers', dropTriggers);
-  validateBoolean('checkUniqueKeyChange', checkUniqueKeyChange);
-  validateBoolean('statistics', statistics);
+  if (maxLoad !== undefined && (!Number.isInteger(maxLoad) || maxLoad <= 0)) {
+    throw new TypeError(`maxLoad must be a positive integer, got ${maxLoad}`);
+  }
+  if (criticalLoad !== undefined && (!Number.isInteger(criticalLoad) || criticalLoad <= 0)) {
+    throw new TypeError(`criticalLoad must be a positive integer, got ${criticalLoad}`);
+  }
+  if (checkInterval !== undefined && (!Number.isInteger(checkInterval) || checkInterval <= 0)) {
+    throw new TypeError(`checkInterval must be a positive integer, got ${checkInterval}`);
+  }
+  if (chunkIndexColumns !== undefined && (!Number.isInteger(chunkIndexColumns) || chunkIndexColumns <= 0)) {
+    throw new TypeError(`chunkIndexColumns must be a positive integer, got ${chunkIndexColumns}`);
+  }
+  if (chunkSize !== undefined && (!Number.isInteger(chunkSize) || chunkSize <= 0)) {
+    throw new TypeError(`chunkSize must be a positive integer, got ${chunkSize}`);
+  }
+  if (chunkSizeLimit !== undefined && (typeof chunkSizeLimit !== 'number' || chunkSizeLimit <= 0)) {
+    throw new TypeError(`chunkSizeLimit must be a positive number, got ${chunkSizeLimit}`);
+  }
+  if (chunkTime !== undefined && (typeof chunkTime !== 'number' || chunkTime <= 0)) {
+    throw new TypeError(`chunkTime must be a positive number, got ${chunkTime}`);
+  }
+  if (maxLag !== undefined && (!Number.isInteger(maxLag) || maxLag <= 0)) {
+    throw new TypeError(`maxLag must be a positive integer, got ${maxLag}`);
+  }
+  if (maxBuffer !== undefined && (!Number.isInteger(maxBuffer) || maxBuffer <= 0)) {
+    throw new TypeError(`maxBuffer must be a positive integer, got ${maxBuffer}`);
+  }
   if (!VALID_FOREIGN_KEYS_METHODS.includes(alterForeignKeysMethod)) {
     throw new TypeError(
       `alterForeignKeysMethod must be one of ${VALID_FOREIGN_KEYS_METHODS.join(', ')}; got '${alterForeignKeysMethod}'.`
@@ -206,8 +207,9 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
 async function runAlterClause(knex, table, alterClause, options = {}) {
   const { forcePtosc, ptoscMinRows = 0 } = options;
 
-  validateBoolean('forcePtosc', forcePtosc);
-  validateNonNegativeInt('ptoscMinRows', ptoscMinRows);
+  if (!Number.isInteger(ptoscMinRows) || ptoscMinRows < 0) {
+    throw new TypeError(`ptoscMinRows must be a non-negative integer, got ${ptoscMinRows}`);
+  }
 
   if (ptoscMinRows > 0) {
     const conn = knex.client.config.connection || {};

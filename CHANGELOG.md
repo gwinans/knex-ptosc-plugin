@@ -5,7 +5,6 @@
 **0.2.13**
 
 - Stream statistics line-by-line and invoke `onStatistics` for each update.
-- Validate numeric and boolean options via helper functions.
 
 **0.2.12**
 
