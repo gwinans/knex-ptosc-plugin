@@ -54,4 +54,23 @@ describe('acquireMigrationLock', () => {
     await expect(acquireMigrationLock(knex, { intervalMs: 10, timeoutMs: 50 })).rejects.toThrow(/Timeout acquiring/);
     expect(knex._state.is_locked).toBe(1);
   });
+
+  it('checks required tables concurrently before acquiring the lock', async () => {
+    const knex = createKnexMock(0);
+    const delay = 100;
+    let calls = 0;
+    knex.schema.hasTable = async () => {
+      calls++;
+      await new Promise((r) => setTimeout(r, delay));
+      return true;
+    };
+    const start = Date.now();
+    const { release } = await acquireMigrationLock(knex, { timeoutMs: 1000, intervalMs: 10 });
+    const duration = Date.now() - start;
+    expect(calls).toBe(2);
+    expect(duration).toBeLessThan(delay * 1.5);
+    expect(knex._state.is_locked).toBe(1);
+    await release();
+    expect(knex._state.is_locked).toBe(0);
+  });
 });

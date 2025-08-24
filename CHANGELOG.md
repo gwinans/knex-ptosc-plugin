@@ -2,6 +2,10 @@
 
 ### 2025-08-23:
 
+**0.2.11**
+
+- Check migration and lock tables concurrently when acquiring the migration lock.
+
 **0.2.10**
 
 - Handle MySQL error 4092 from `ALGORITHM=INSTANT` by routing the query through

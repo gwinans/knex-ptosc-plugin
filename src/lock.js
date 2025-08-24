@@ -16,8 +16,10 @@ export async function acquireMigrationLock(
     logger = console,
   } = {},
 ) {
-  const hasMigrationsTable = await knex.schema.hasTable(migrationsTable);
-  const hasLockTable = await knex.schema.hasTable(migrationsLockTable);
+  const [hasMigrationsTable, hasLockTable] = await Promise.all([
+    knex.schema.hasTable(migrationsTable),
+    knex.schema.hasTable(migrationsLockTable),
+  ]);
 
   if (!hasMigrationsTable || !hasLockTable) {
     throw new Error(
