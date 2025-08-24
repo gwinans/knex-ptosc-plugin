@@ -7,6 +7,7 @@
 - Stream statistics line-by-line and invoke `onStatistics` for each update.
 - Validate numeric and boolean options via helper functions.
 - Acquire migration lock on a non-transactional connection when invoked within a transaction.
+- Check migration tables concurrently before acquiring lock.
 
 **0.2.12**
 
