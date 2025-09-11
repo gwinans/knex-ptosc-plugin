@@ -36,7 +36,10 @@ export async function acquireMigrationLock(
     const updated = await knex(migrationsLockTable)
       .where({ is_locked: 0 })
       .update({ is_locked: 1 })
-      .catch(() => 0);
+      .catch((err) => {
+        logger.error('Failed to acquire migration lock', err);
+        throw err;
+      });
 
     if (updated === 1) {
       acquired = true;
@@ -47,7 +50,10 @@ export async function acquireMigrationLock(
     await knex(migrationsLockTable)
       .select('is_locked')
       .first()
-      .catch(() => ({ is_locked: 0 }));
+      .catch((err) => {
+        logger.error('Failed to read migration lock status', err);
+        throw err;
+      });
 
     if (Date.now() - start > timeoutMs) {
       throw new Error(`Timeout acquiring ${migrationsLockTable}`);

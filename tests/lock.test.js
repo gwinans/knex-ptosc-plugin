@@ -1,12 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { acquireMigrationLock } from '../src/lock.js';
 
-function createKnexMock(initial = 0) {
+function createKnexMock(initial = 0, opts = {}) {
+  const { updateError = null, selectError = null } = opts;
   const state = { is_locked: initial };
   const knex = () => {
     const builder = {
       where() { return builder; },
       update: async (obj) => {
+        if (updateError) throw updateError;
         if (obj.is_locked === 1 && state.is_locked === 0) {
           state.is_locked = 1;
           return 1;
@@ -18,7 +20,10 @@ function createKnexMock(initial = 0) {
         return 0;
       },
       select() { return builder; },
-      first: async () => ({ is_locked: state.is_locked }),
+      first: async () => {
+        if (selectError) throw selectError;
+        return { is_locked: state.is_locked };
+      },
     };
     return builder;
   };
@@ -84,4 +89,22 @@ describe('acquireMigrationLock', () => {
       );
     },
   );
+
+  it('logs and surfaces errors from lock update', async () => {
+    const error = new Error('update failed');
+    const knex = createKnexMock(0, { updateError: error });
+    const logger = { error: vi.fn() };
+    await expect(acquireMigrationLock(knex, { logger })).rejects.toThrow('update failed');
+    expect(logger.error).toHaveBeenCalledWith('Failed to acquire migration lock', error);
+  });
+
+  it('logs and surfaces errors from lock status read', async () => {
+    const error = new Error('select failed');
+    const knex = createKnexMock(1, { selectError: error });
+    const logger = { error: vi.fn() };
+    await expect(
+      acquireMigrationLock(knex, { logger, intervalMs: 10, timeoutMs: 50 }),
+    ).rejects.toThrow('select failed');
+    expect(logger.error).toHaveBeenCalledWith('Failed to read migration lock status', error);
+  });
 });
