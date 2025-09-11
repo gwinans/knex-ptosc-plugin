@@ -5,6 +5,7 @@
 **0.2.14**
 
 - Log and surface errors during migration lock acquisition.
+- Refactored option validation into reusable helpers and added unit tests for invalid values.
 
 ### 2025-08-24:
 
