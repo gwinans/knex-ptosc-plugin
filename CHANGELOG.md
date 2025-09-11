@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### 2025-09-11:
+
+**0.2.14**
+
+- Log and surface errors during migration lock acquisition.
+
 ### 2025-08-24:
 
 **0.2.13**
