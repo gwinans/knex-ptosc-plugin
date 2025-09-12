@@ -101,7 +101,7 @@ describe('resolvePtoscPath', () => {
     }
     expect(error).toBeDefined();
     expect(error.message).toMatch(/binary not found: missing-ptosc/);
-    expect(error.message).not.toMatch(/\n/);
+    expect(error.message).not.toContain('\n');
     expect(spawnSpy).toHaveBeenCalledTimes(1);
     spawnSpy.mockRestore();
   });

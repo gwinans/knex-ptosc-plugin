@@ -11,7 +11,8 @@ export function resolvePtoscPath(ptoscPath = 'pt-online-schema-change') {
   if (status !== 0) {
     throw new Error(
       'pt-online-schema-change binary not found: ' +
-        `${ptoscPath}. Install Percona Toolkit and ensure pt-online-schema-change is in your PATH.`
+        ptoscPath +
+        '. Install Percona Toolkit and ensure pt-online-schema-change is in your PATH.'
     );
   }
   const resolved = stdout.toString().trim();
