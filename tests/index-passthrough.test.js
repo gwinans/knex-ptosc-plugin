@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createKnexMockRaw, createKnexMockBuilder } from './helpers/knex-mock.js';
 
 vi.mock('../src/ptosc-runner.js', () => ({
   buildPtoscArgs: vi.fn(() => []),
@@ -12,35 +13,6 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-function createKnexMockRaw() {
-  const knex = () => ({
-    where() { return this; },
-    update: async () => 1,
-    select() { return this; },
-    first: async () => ({ is_locked: 0 }),
-  });
-  knex.schema = { hasTable: async () => true };
-  knex.raw = vi.fn(() => Promise.resolve());
-  return knex;
-}
-
-function createKnexMockBuilder() {
-  const knex = createKnexMockRaw();
-  knex.client = { config: { connection: { database: 'testdb', host: 'localhost', user: 'root' } } };
-  knex.schema.alterTable = (name, cb) => {
-    cb({});
-    return {
-      toSQL: () => ({ sql: `ALTER TABLE ${name} ADD INDEX idx_foo (foo)` }),
-    };
-  };
-  knex.raw = vi.fn((sql, bindings) => {
-    if (bindings !== undefined) {
-      return { toQuery: () => sql };
-    }
-    return Promise.resolve();
-  });
-  return knex;
-}
 
 describe('index clause passthrough', () => {
   it('runs ADD INDEX via alterTableWithPtoscRaw', async () => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createKnexMock } from './helpers/knex-mock.js';
 
 vi.mock('../src/ptosc-runner.js', () => ({
   buildPtoscArgs: vi.fn(() => []),
@@ -7,19 +8,6 @@ vi.mock('../src/ptosc-runner.js', () => ({
 
 import { alterTableWithPtoscRaw } from '../src/index.js';
 import { assertPositiveInteger, assertPositiveNumber } from '../src/validators.js';
-
-function createKnexMock() {
-  const knex = () => ({
-    where() { return this; },
-    update: async () => 1,
-    select() { return this; },
-    first: async () => ({ is_locked: 0 }),
-  });
-  knex.schema = { hasTable: async () => true };
-  knex.client = { config: { connection: { database: 'testdb', host: 'localhost', user: 'root' } } };
-  knex.raw = vi.fn(() => Promise.resolve());
-  return knex;
-}
 
 describe('option validation', () => {
   let knex;

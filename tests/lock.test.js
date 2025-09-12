@@ -1,42 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { acquireMigrationLock } from '../src/lock.js';
-
-function createKnexMock(initial = 0, opts = {}) {
-  const { updateError = null, selectError = null } = opts;
-  const state = { is_locked: initial };
-  const knex = () => {
-    const builder = {
-      where() { return builder; },
-      update: async (obj) => {
-        if (updateError) throw updateError;
-        if (obj.is_locked === 1 && state.is_locked === 0) {
-          state.is_locked = 1;
-          return 1;
-        }
-        if (obj.is_locked === 0 && state.is_locked === 1) {
-          state.is_locked = 0;
-          return 1;
-        }
-        return 0;
-      },
-      select() { return builder; },
-      first: async () => {
-        if (selectError) throw selectError;
-        return { is_locked: state.is_locked };
-      },
-    };
-    return builder;
-  };
-  knex.schema = {
-    hasTable: async () => true,
-  };
-  knex._state = state;
-  return knex;
-}
+import { createLockKnexMock } from './helpers/knex-mock.js';
 
 describe('acquireMigrationLock', () => {
   it('acquires and releases the lock when available', async () => {
-    const knex = createKnexMock(0);
+    const knex = createLockKnexMock(0);
     const { release } = await acquireMigrationLock(knex);
     expect(knex._state.is_locked).toBe(1);
     await release();
@@ -44,7 +12,7 @@ describe('acquireMigrationLock', () => {
   });
 
   it('waits for existing lock and then acquires it', async () => {
-    const knex = createKnexMock(1);
+    const knex = createLockKnexMock(1);
     setTimeout(() => {
       knex._state.is_locked = 0;
     }, 20);
@@ -55,13 +23,13 @@ describe('acquireMigrationLock', () => {
   });
 
   it('throws after timeout when lock remains held', async () => {
-    const knex = createKnexMock(1);
+    const knex = createLockKnexMock(1);
     await expect(acquireMigrationLock(knex, { intervalMs: 10, timeoutMs: 50 })).rejects.toThrow(/Timeout acquiring/);
     expect(knex._state.is_locked).toBe(1);
   });
 
   it('checks required tables concurrently before acquiring the lock', async () => {
-    const knex = createKnexMock(0);
+    const knex = createLockKnexMock(0);
     const delay = 100;
     let calls = 0;
     knex.schema.hasTable = async () => {
@@ -82,7 +50,7 @@ describe('acquireMigrationLock', () => {
   it.each(['knex_migrations', 'knex_migrations_lock'])(
     'throws if %s table is missing',
     async (missingTable) => {
-      const knex = createKnexMock(0);
+      const knex = createLockKnexMock(0);
       knex.schema.hasTable = vi.fn(async (table) => table !== missingTable);
       await expect(acquireMigrationLock(knex)).rejects.toThrow(
         'Required Knex migration tables do not exist. Ensure knex_migrations and knex_migrations_lock are created before running pt-osc migrations.',
@@ -92,7 +60,7 @@ describe('acquireMigrationLock', () => {
 
   it('logs and surfaces errors from lock update', async () => {
     const error = new Error('update failed');
-    const knex = createKnexMock(0, { updateError: error });
+    const knex = createLockKnexMock(0, { updateError: error });
     const logger = { error: vi.fn() };
     await expect(acquireMigrationLock(knex, { logger })).rejects.toThrow('update failed');
     expect(logger.error).toHaveBeenCalledWith('Failed to acquire migration lock', error);
@@ -100,7 +68,7 @@ describe('acquireMigrationLock', () => {
 
   it('logs and surfaces errors from lock status read', async () => {
     const error = new Error('select failed');
-    const knex = createKnexMock(1, { selectError: error });
+    const knex = createLockKnexMock(1, { selectError: error });
     const logger = { error: vi.fn() };
     await expect(
       acquireMigrationLock(knex, { logger, intervalMs: 10, timeoutMs: 50 }),
