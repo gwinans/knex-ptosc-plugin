@@ -4,6 +4,7 @@
 
 **0.2.14**
 
+- Ensure resolvePtoscPath error message is single line and test no newline.
 - Log and surface errors during migration lock acquisition.
 - Refactored option validation into reusable helpers and added unit tests for invalid values.
 - Consolidated shared pt-osc arguments to remove duplicate code.
