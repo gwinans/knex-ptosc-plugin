@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createKnexMockRaw, createKnexMockBuilder } from './helpers/knex-mock.js';
 
 vi.mock('../src/ptosc-runner.js', () => ({
   buildPtoscArgs: vi.fn(() => []),
@@ -11,34 +12,6 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-function createKnexMockRaw() {
-  const knex = () => ({
-    where() { return this; },
-    update: async () => 1,
-    select() { return this; },
-    first: async () => ({ is_locked: 0 }),
-  });
-  knex.schema = { hasTable: async () => true };
-  knex.raw = vi.fn(() => Promise.resolve());
-  return knex;
-}
-
-function createKnexMockBuilderNoAlter() {
-  const knex = createKnexMockRaw();
-  knex.schema.alterTable = (name, cb) => {
-    cb({});
-    return {
-      toSQL: () => ({ sql: `CREATE TABLE ${name} (id int)` }),
-    };
-  };
-  knex.raw = vi.fn((sql, bindings) => {
-    if (bindings !== undefined) {
-      return { toQuery: () => sql };
-    }
-    return Promise.resolve();
-  });
-  return knex;
-}
 
 describe('input validation', () => {
   it('throws when no SQL statements are provided to alterTableWithPtoscRaw', async () => {
@@ -54,7 +27,7 @@ describe('input validation', () => {
   });
 
   it('throws when alterTableWithPtosc produces no ALTER clauses', async () => {
-    const knex = createKnexMockBuilderNoAlter();
+    const knex = createKnexMockBuilder({ toSQL: (name) => ({ sql: `CREATE TABLE ${name} (id int)` }) });
     await expect(
       alterTableWithPtosc(knex, 'widgets', () => {})
     ).rejects.toThrow(/No ALTER TABLE statements generated/);

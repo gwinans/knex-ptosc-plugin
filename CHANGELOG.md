@@ -4,6 +4,7 @@
 
 **0.2.14**
 
+- Consolidated Knex mock builders into shared test helpers.
 - Ensure resolvePtoscPath error message is single line and test no newline.
 - Log and surface errors during migration lock acquisition.
 - Refactored option validation into reusable helpers and added unit tests for invalid values.

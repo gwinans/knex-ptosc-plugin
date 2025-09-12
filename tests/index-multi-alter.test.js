@@ -12,34 +12,11 @@ vi.mock('../src/lock.js', () => ({
 import { alterTableWithPtosc } from '../src/index.js';
 import { runPtoscProcess } from '../src/ptosc-runner.js';
 import { acquireMigrationLock } from '../src/lock.js';
+import { createKnexMockBuilder } from './helpers/knex-mock.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
-
-function createKnexMock() {
-  const knex = () => ({});
-  knex.client = { config: { connection: { database: 'testdb', host: 'localhost', user: 'root' } } };
-  knex.schema = {
-    alterTable: (name, cb) => {
-      cb({});
-      return {
-        toSQL: () => [
-          { sql: `ALTER TABLE ${name} ADD INDEX idx_foo (foo)` },
-          { sql: `ALTER TABLE ${name} MODIFY COLUMN bar INT NOT NULL` },
-          { sql: `ALTER TABLE ${name} MODIFY COLUMN baz VARCHAR(50)` },
-        ],
-      };
-    },
-  };
-  knex.raw = vi.fn((sql, bindings) => {
-    if (bindings !== undefined) {
-      return { toQuery: () => sql };
-    }
-    return Promise.resolve();
-  });
-  return knex;
-}
 
 describe('alterTableWithPtosc with multiple ALTER statements', () => {
   it('acquires/releases lock, runs index natively, aggregates ptosc stats', async () => {
@@ -52,7 +29,13 @@ describe('alterTableWithPtosc with multiple ALTER statements', () => {
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ statistics: { second: 2 } });
 
-    const knex = createKnexMock();
+    const knex = createKnexMockBuilder({
+      toSQL: (name) => [
+        { sql: `ALTER TABLE ${name} ADD INDEX idx_foo (foo)` },
+        { sql: `ALTER TABLE ${name} MODIFY COLUMN bar INT NOT NULL` },
+        { sql: `ALTER TABLE ${name} MODIFY COLUMN baz VARCHAR(50)` },
+      ],
+    });
     const stats = await alterTableWithPtosc(knex, 'widgets', () => {}, { forcePtosc: true, statistics: true });
 
     expect(acquireMigrationLock).toHaveBeenCalledTimes(1);
