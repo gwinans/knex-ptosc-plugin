@@ -93,9 +93,15 @@ describe('resolvePtoscPath', () => {
     const spawnSpy = vi
       .spyOn(childProcess, 'spawnSync')
       .mockReturnValue({ status: 1, stdout: Buffer.from('') });
-    expect(() => resolvePtoscPath('missing-ptosc')).toThrow(
-      /binary not found: missing-ptosc/
-    );
+    let error;
+    try {
+      resolvePtoscPath('missing-ptosc');
+    } catch (err) {
+      error = err;
+    }
+    expect(error).toBeDefined();
+    expect(error.message).toMatch(/binary not found: missing-ptosc/);
+    expect(error.message).not.toMatch(/\n/);
     expect(spawnSpy).toHaveBeenCalledTimes(1);
     spawnSpy.mockRestore();
   });
