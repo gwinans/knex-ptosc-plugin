@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createKnexMock } from './helpers/knex-mock.js';
+import { createKnexMock, createKnexMockBuilder } from './helpers/knex-mock.js';
 
 vi.mock('../src/ptosc-runner.js', () => ({
   buildPtoscArgs: vi.fn(() => []),
   runPtoscProcess: vi.fn(() => Promise.resolve({ statistics: {} })),
 }));
 
-import { alterTableWithPtoscRaw } from '../src/index.js';
+import { alterTableWithPtoscRaw, alterTableWithPtosc } from '../src/index.js';
 import { assertPositiveInteger, assertPositiveNumber } from '../src/validators.js';
 
-describe('option validation', () => {
+describe('alterTableWithPtoscRaw option validation', () => {
   let knex;
   beforeEach(() => {
     knex = createKnexMock();
@@ -21,15 +21,47 @@ describe('option validation', () => {
     ).rejects.toBeInstanceOf(TypeError);
   });
 
+  it('throws for invalid chunkSize', async () => {
+    await expect(
+      alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { chunkSize: 0 })
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+
   it('throws for invalid chunkSizeLimit', async () => {
     await expect(
       alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { chunkSizeLimit: 0 })
     ).rejects.toBeInstanceOf(TypeError);
   });
 
+  it('throws for invalid maxLag', async () => {
+    await expect(
+      alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { maxLag: 0 })
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+
   it('throws for invalid ptoscMinRows', async () => {
     await expect(
       alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { ptoscMinRows: -1 })
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+});
+
+describe('alterTableWithPtosc option validation', () => {
+  it('throws for invalid chunkSize', async () => {
+    const knex = createKnexMockBuilder({
+      toSQL: (name) => ({ sql: `ALTER TABLE ${name} ADD COLUMN foo INT` }),
+    });
+    await expect(
+      alterTableWithPtosc(knex, 'widgets', () => {}, { chunkSize: 0 })
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('throws for invalid maxLag', async () => {
+    const knex = createKnexMockBuilder({
+      toSQL: (name) => ({ sql: `ALTER TABLE ${name} ADD COLUMN foo INT` }),
+    });
+    await expect(
+      alterTableWithPtosc(knex, 'widgets', () => {}, { maxLag: 0 })
     ).rejects.toBeInstanceOf(TypeError);
   });
 });
