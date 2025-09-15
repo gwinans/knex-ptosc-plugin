@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import childProcess from 'child_process';
 import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 import {
   buildPtoscArgs,
   resolvePtoscPath,
@@ -113,8 +114,10 @@ describe('runPtoscProcess', () => {
       .spyOn(childProcess, 'spawnSync')
       .mockReturnValue({ status: 0, stdout: Buffer.from('/usr/bin/ptosc\n') });
     const child = new EventEmitter();
-    child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    child.stdout = stdout;
+    child.stderr = stderr;
     child.kill = vi.fn();
     const spawnSpy = vi.spyOn(childProcess, 'spawn').mockReturnValue(child);
 
@@ -128,9 +131,11 @@ describe('runPtoscProcess', () => {
       logger: { log: vi.fn(), error: vi.fn() },
     });
 
-    child.stdout.emit('data', Buffer.from('50% 00:20 remain\n'));
-    child.stderr.emit('data', Buffer.from('# Copy time 2\n'));
-    child.stdout.emit('data', Buffer.from('# Chunk time 1.5\n'));
+    stdout.write('50% 00:20 remain\n');
+    stderr.write('# Copy time 2\n');
+    stdout.write('# Chunk time 1.5\n');
+    stdout.end();
+    stderr.end();
     child.emit('close', 0);
 
     const result = await promise;
@@ -150,8 +155,10 @@ describe('runPtoscProcess', () => {
       .spyOn(childProcess, 'spawnSync')
       .mockReturnValue({ status: 0, stdout: Buffer.from('/usr/bin/ptosc\n') });
     const child = new EventEmitter();
-    child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    child.stdout = stdout;
+    child.stderr = stderr;
     child.kill = vi.fn();
     const spawnSpy = vi.spyOn(childProcess, 'spawn').mockReturnValue(child);
 
@@ -162,7 +169,9 @@ describe('runPtoscProcess', () => {
       logger: { log: vi.fn(), error: vi.fn() },
     });
 
-    child.stdout.emit('data', Buffer.from('a'.repeat(11)));
+    stdout.write('a'.repeat(11));
+    stdout.end();
+    stderr.end();
     await expect(promise).rejects.toThrow(/maxBuffer exceeded/);
     expect(child.kill).toHaveBeenCalled();
 
@@ -175,8 +184,10 @@ describe('runPtoscProcess', () => {
       .spyOn(childProcess, 'spawnSync')
       .mockReturnValue({ status: 0, stdout: Buffer.from('/usr/bin/ptosc\n') });
     const child = new EventEmitter();
-    child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    child.stdout = stdout;
+    child.stderr = stderr;
     child.kill = vi.fn();
     const spawnSpy = vi.spyOn(childProcess, 'spawn').mockReturnValue(child);
 
@@ -186,8 +197,10 @@ describe('runPtoscProcess', () => {
       logger: { log: vi.fn(), error: vi.fn() },
     });
 
-    child.stdout.emit('data', Buffer.from('out\n'));
-    child.stderr.emit('data', Buffer.from('err\n'));
+    stdout.write('out\n');
+    stderr.write('err\n');
+    stdout.end();
+    stderr.end();
     child.emit('close', 1);
 
     await expect(promise).rejects.toMatchObject({

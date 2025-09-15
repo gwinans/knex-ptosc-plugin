@@ -6,6 +6,7 @@
 
 - Centralized ptosc option validation with `validatePtoscOptions` helper.
 - Acquire migration lock within a transaction using `SELECT ... FOR UPDATE` to block callers without busy looping.
+- Reworked ptosc runner output handling to use readline for progress and statistics parsing.
 
 ### 2025-09-14:
 
