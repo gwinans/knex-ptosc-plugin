@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### 2025-09-15:
+
+**0.2.15**
+
+- Centralized ptosc option validation with `validatePtoscOptions` helper.
+
 ### 2025-09-14:
 
 **0.2.14**
