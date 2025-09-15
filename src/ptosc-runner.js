@@ -1,4 +1,5 @@
 import childProcess from 'child_process';
+import readline from 'node:readline';
 import { isDebugEnabled } from './debug.js';
 
 const resolvedPtoscPaths = new Map();
@@ -118,11 +119,22 @@ export async function runPtoscProcess({
     let stdout = '';
     let stderr = '';
     let total = 0;
+    let settled = false;
     const progressRegex = /\b(\d{1,3}(?:\.\d+)?)%(?:\s+(\d+:\d+(?::\d+)?)\s+remain)?/;
-    let stdoutLine = '';
-    let stderrLine = '';
+    const statisticsRegex = /^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/;
+    const statistics = {};
 
-    function handleChunk(chunk, isErr) {
+    const settle = (fn) => {
+      if (settled) return;
+      settled = true;
+      fn();
+    };
+
+    const rejectOnce = (error) => settle(() => reject(error));
+    const resolveOnce = (value) => settle(() => resolve(value));
+
+    const handleData = (chunk, isErr) => {
+      if (settled) return;
       const str = chunk.toString();
       total += Buffer.byteLength(str);
       if (total > maxBuffer) {
@@ -130,40 +142,50 @@ export async function runPtoscProcess({
         const error = new Error('pt-online-schema-change maxBuffer exceeded');
         error.stdout = stdout;
         error.stderr = stderr;
-        return reject(error);
+        return rejectOnce(error);
       }
-
-      const lines = (isErr ? stderrLine : stdoutLine) + str;
-      const split = lines.split(/\r?\n/);
       if (isErr) {
-        stderrLine = split.pop();
-        split.forEach(line => {
-          if (!line) return;
-          if (debug) logger.error(line);
-          const m = line.match(progressRegex);
-          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
-        });
         stderr += str;
       } else {
-        stdoutLine = split.pop();
-        split.forEach(line => {
-          if (!line) return;
-          if (debug) logger.log(line);
-          const m = line.match(progressRegex);
-          if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
-        });
         stdout += str;
       }
+    };
+
+    const handleLine = (line, isErr) => {
+      if (settled) return;
+      const normalized = line.replace(/\r/g, '');
+      if (!normalized) return;
+      if (debug) {
+        if (isErr) {
+          logger.error(normalized);
+        } else {
+          logger.log(normalized);
+        }
+      }
+      const progressMatch = normalized.match(progressRegex);
+      if (progressMatch && onProgress) {
+        onProgress(parseFloat(progressMatch[1]), progressMatch[2]);
+      }
+      const statsMatch = normalized.match(statisticsRegex);
+      if (statsMatch) {
+        statistics[statsMatch[1].trim()] = Number(statsMatch[2]);
+      }
+    };
+
+    if (child.stdout) {
+      child.stdout.on('data', (chunk) => handleData(chunk, false));
+      const stdoutReader = readline.createInterface({ input: child.stdout });
+      stdoutReader.on('line', (line) => handleLine(line, false));
     }
 
-    child.stdout && child.stdout.on('data', (c) => handleChunk(c, false));
-    child.stderr && child.stderr.on('data', (c) => handleChunk(c, true));
+    if (child.stderr) {
+      child.stderr.on('data', (chunk) => handleData(chunk, true));
+      const stderrReader = readline.createInterface({ input: child.stderr });
+      stderrReader.on('line', (line) => handleLine(line, true));
+    }
 
     child.on('error', (err) => {
-      // Ensure buffered lines are included in logged output
-      if (stdoutLine) stdout += stdoutLine;
-      if (stderrLine) stderr += stderrLine;
-
+      if (settled) return;
       logger.error(`pt-online-schema-change failed with code ${err.code}`);
       if (stdout) logger.error(`[PT-OSC] stdout:\n${stdout}`);
       if (stderr) logger.error(`[PT-OSC] stderr:\n${stderr}`);
@@ -172,20 +194,11 @@ export async function runPtoscProcess({
       error.code = err.code;
       error.stdout = stdout;
       error.stderr = stderr;
-      reject(error);
+      rejectOnce(error);
     });
 
     child.on('close', (code) => {
-      if (stdoutLine) {
-        if (debug) logger.log(stdoutLine);
-        const m = stdoutLine.match(progressRegex);
-        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
-      }
-      if (stderrLine) {
-        if (debug) logger.error(stderrLine);
-        const m = stderrLine.match(progressRegex);
-        if (m && onProgress) onProgress(parseFloat(m[1]), m[2]);
-      }
+      if (settled) return;
       if (code) {
         logger.error(`pt-online-schema-change failed with code ${code}`);
         if (stdout) logger.error(`[PT-OSC] stdout:\n${stdout}`);
@@ -195,19 +208,11 @@ export async function runPtoscProcess({
         error.code = code;
         error.stdout = stdout;
         error.stderr = stderr;
-        return reject(error);
+        return rejectOnce(error);
       }
-      const combined = `${stdout}\n${stderr}`;
-      const stats = {};
-      combined.split(/\r?\n/).forEach(line => {
-        const m = line.match(/^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/);
-        if (m) {
-          stats[m[1].trim()] = Number(m[2]);
-        }
-      });
-      const statsCopy = { ...stats };
-      const hasStats = Object.keys(statsCopy).length > 0;
-      if (hasStats) {
+
+      const statsCopy = { ...statistics };
+      if (Object.keys(statsCopy).length > 0) {
         logger.log(
           `[PT-OSC] Statistics: ${Object.entries(statsCopy)
             .map(([k, v]) => `${k}=${v}`)
@@ -215,7 +220,8 @@ export async function runPtoscProcess({
         );
         if (onStatistics) onStatistics(statsCopy);
       }
-      resolve({ stdout, stderr, statistics: statsCopy });
+
+      resolveOnce({ stdout, stderr, statistics: statsCopy });
     });
   });
   return result;
