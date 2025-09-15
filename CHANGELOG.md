@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### 2025-09-14:
+
+**0.2.14**
+
+- Added tests asserting TypeError for invalid numeric options.
+
 ### 2025-09-11:
 
 **0.2.14**
