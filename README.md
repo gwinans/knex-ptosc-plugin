@@ -239,6 +239,58 @@ export function up(knex) {
 }
 ```
 
+## Advanced Usage
+
+### Handling Foreign Keys
+
+`pt-online-schema-change` may refuse to run when tables have foreign key constraints. Use `alterForeignKeysMethod: 'drop_swap'` or `'rebuild_constraints'` to control how pt-osc manages them:
+
+```js
+return alterTableWithPtosc(
+  knex,
+  'widgets',
+  (table) => {
+    table.dropColumn('category_id');
+  },
+  { alterForeignKeysMethod: 'drop_swap' } // or 'rebuild_constraints'
+);
+```
+
+### Replica Lag Safeguard
+
+Enable `checkReplicaLag: true` to have pt-osc abort if replicas fall behind, useful in production environments with read replicas:
+
+```js
+return alterTableWithPtosc(
+  knex,
+  'widgets',
+  (table) => {
+    table.string('status').defaultTo('pending');
+  },
+  { checkReplicaLag: true }
+);
+```
+
+### Capture Statistics
+
+Collect pt-osc statistics by setting `statistics: true` and handling them in the `onStatistics` callback:
+
+```js
+return alterTableWithPtosc(
+  knex,
+  'widgets',
+  (table) => {
+    table.bigInteger('qty').alter();
+  },
+  {
+    statistics: true,
+    onStatistics: (stats) => {
+      console.log('pt-osc stats', stats);
+    },
+  }
+);
+```
+
 ---
 
 ## Troubleshooting
