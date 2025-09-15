@@ -1,9 +1,7 @@
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 /**
  * Acquire knex's migration lock atomically.
- * Will only update the lock row from 0 -> 1. Retries until timeout.
- * Returns a release() function that sets 1 -> 0 if we acquired it.
+ * Acquires the lock row inside a transaction using a database level lock.
+ * Returns a release() function that sets 1 -> 0 and commits/rollbacks the transaction.
  * If required tables don't exist, throw immediately.
  */
 export async function acquireMigrationLock(
@@ -12,7 +10,6 @@ export async function acquireMigrationLock(
     migrationsTable = 'knex_migrations',
     migrationsLockTable = 'knex_migrations_lock',
     timeoutMs = 30000,
-    intervalMs = 500,
     logger = console,
   } = {},
 ) {
@@ -29,48 +26,104 @@ export async function acquireMigrationLock(
   }
 
   const start = Date.now();
-  let acquired = false;
-  let changedRow = false;
+  const deadline = start + timeoutMs;
 
-  while (!acquired) {
-    const updated = await knex(migrationsLockTable)
-      .where({ is_locked: 0 })
+  const withDeadline = async (promise) => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      throw new Error(`Timeout acquiring ${migrationsLockTable}`);
+    }
+
+    let timer;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(`Timeout acquiring ${migrationsLockTable}`)),
+            remaining,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
+  const trx = await knex.transaction();
+  let released = false;
+
+  const rollbackTransaction = async (error) => {
+    try {
+      await trx.rollback();
+    } catch (rollbackErr) {
+      logger.error('Failed to rollback migration lock transaction', rollbackErr);
+      if (!error) {
+        throw rollbackErr;
+      }
+    }
+    if (error) {
+      throw error;
+    }
+  };
+
+  const release = async ({ rollback: shouldRollback = false } = {}) => {
+    if (released) return;
+    released = true;
+
+    if (shouldRollback) {
+      await rollbackTransaction();
+      return;
+    }
+
+    try {
+      await trx(migrationsLockTable)
+        .update({ is_locked: 0 });
+    } catch (err) {
+      logger.error('Failed to release migration lock', err);
+      await rollbackTransaction(err);
+      return;
+    }
+
+    try {
+      await trx.commit();
+    } catch (err) {
+      logger.error('Failed to finalize migration lock transaction', err);
+      await rollbackTransaction(err);
+    }
+  };
+
+  try {
+    const row = await withDeadline(
+      trx(migrationsLockTable)
+        .forUpdate()
+        .select('is_locked')
+        .first()
+        .catch((err) => {
+          logger.error('Failed to read migration lock status', err);
+          throw err;
+        }),
+    );
+
+    if (!row) {
+      throw new Error(`Missing row in ${migrationsLockTable}`);
+    }
+
+    await trx(migrationsLockTable)
       .update({ is_locked: 1 })
       .catch((err) => {
         logger.error('Failed to acquire migration lock', err);
         throw err;
       });
 
-    if (updated === 1) {
-      acquired = true;
-      changedRow = true;
-      break;
+    return { release };
+  } catch (err) {
+    released = true;
+    try {
+      await trx.rollback();
+    } catch (rollbackErr) {
+      logger.error('Failed to rollback migration lock transaction', rollbackErr);
     }
-
-    await knex(migrationsLockTable)
-      .select('is_locked')
-      .first()
-      .catch((err) => {
-        logger.error('Failed to read migration lock status', err);
-        throw err;
-      });
-
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`Timeout acquiring ${migrationsLockTable}`);
-    }
-    await sleep(intervalMs);
+    throw err;
   }
-
-  return {
-    release: async () => {
-      if (!acquired || !changedRow) return;
-      await knex(migrationsLockTable)
-        .where({ is_locked: 1 })
-        .update({ is_locked: 0 })
-        .catch((err) => {
-          logger.error('Failed to release migration lock', err);
-          throw err;
-        });
-    },
-  };
 }

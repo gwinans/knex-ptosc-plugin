@@ -11,20 +11,36 @@ describe('acquireMigrationLock', () => {
     expect(knex._state.is_locked).toBe(0);
   });
 
-  it('waits for existing lock and then acquires it', async () => {
-    const knex = createLockKnexMock(1);
-    setTimeout(() => {
-      knex._state.is_locked = 0;
-    }, 20);
-    const { release } = await acquireMigrationLock(knex, { intervalMs: 10, timeoutMs: 200 });
+  it('allows only one caller to proceed and avoids busy looping while waiting', async () => {
+    const knex = createLockKnexMock(0);
+    const first = await acquireMigrationLock(knex);
+    expect(knex._state.selectCalls).toBe(1);
+
+    let secondResolved = false;
+    const secondPromise = acquireMigrationLock(knex).then((result) => {
+      secondResolved = true;
+      return result;
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(secondResolved).toBe(false);
+    expect(knex._state.selectCalls).toBe(2);
+    expect(knex._state.waiters.length).toBe(1);
+
+    await first.release();
+    const second = await secondPromise;
+
+    expect(knex._state.selectCalls).toBe(2);
     expect(knex._state.is_locked).toBe(1);
-    await release();
+
+    await second.release();
     expect(knex._state.is_locked).toBe(0);
   });
 
   it('throws after timeout when lock remains held', async () => {
     const knex = createLockKnexMock(1);
-    await expect(acquireMigrationLock(knex, { intervalMs: 10, timeoutMs: 50 })).rejects.toThrow(/Timeout acquiring/);
+    await expect(acquireMigrationLock(knex, { timeoutMs: 50 })).rejects.toThrow(/Timeout acquiring/);
     expect(knex._state.is_locked).toBe(1);
   });
 
@@ -38,7 +54,7 @@ describe('acquireMigrationLock', () => {
       return true;
     };
     const start = Date.now();
-    const { release } = await acquireMigrationLock(knex, { timeoutMs: 1000, intervalMs: 10 });
+    const { release } = await acquireMigrationLock(knex, { timeoutMs: 1000 });
     const duration = Date.now() - start;
     expect(calls).toBe(2);
     expect(duration).toBeLessThan(delay * 1.5);
@@ -71,7 +87,7 @@ describe('acquireMigrationLock', () => {
     const knex = createLockKnexMock(1, { selectError: error });
     const logger = { error: vi.fn() };
     await expect(
-      acquireMigrationLock(knex, { logger, intervalMs: 10, timeoutMs: 50 }),
+      acquireMigrationLock(knex, { logger, timeoutMs: 50 }),
     ).rejects.toThrow('select failed');
     expect(logger.error).toHaveBeenCalledWith('Failed to read migration lock status', error);
   });
