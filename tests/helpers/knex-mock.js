@@ -1,13 +1,7 @@
 import { vi } from 'vitest';
 
 export function createKnexMockRaw(rawImpl = vi.fn(() => Promise.resolve())) {
-  const knex = () => ({
-    where() { return this; },
-    update: async () => 1,
-    select() { return this; },
-    first: async () => ({ is_locked: 0 }),
-  });
-  knex.schema = { hasTable: async () => true };
+  const knex = createLockKnexMock(0);
   knex.raw = rawImpl;
   return knex;
 }
@@ -37,32 +31,158 @@ export function createKnexMockBuilder({
 }
 
 export function createLockKnexMock(initial = 0, opts = {}) {
-  const { updateError = null, selectError = null } = opts;
-  const state = { is_locked: initial };
-  const knex = () => {
+  const {
+    updateError = null,
+    selectError = null,
+    externalLock = initial === 1,
+  } = opts;
+
+  const state = {
+    is_locked: initial,
+    selectCalls: 0,
+    updateCalls: 0,
+    lockOwner: externalLock ? 'external' : null,
+    waiters: [],
+  };
+
+  const createBuilder = (context = {}) => {
+    let forUpdate = false;
+
     const builder = {
-      where() { return builder; },
-      update: async (obj) => {
-        if (updateError) throw updateError;
-        if (obj.is_locked === 1 && state.is_locked === 0) {
-          state.is_locked = 1;
-          return 1;
-        }
-        if (obj.is_locked === 0 && state.is_locked === 1) {
-          state.is_locked = 0;
-          return 1;
-        }
-        return 0;
+      where() {
+        return builder;
       },
-      select() { return builder; },
+      forUpdate() {
+        forUpdate = true;
+        return builder;
+      },
+      select() {
+        return builder;
+      },
       first: async () => {
+        state.selectCalls += 1;
         if (selectError) throw selectError;
+
+        if (context.trx && forUpdate) {
+          await context.trx.acquireLock();
+        }
+
         return { is_locked: state.is_locked };
       },
+      update: async (obj) => {
+        state.updateCalls += 1;
+        if (updateError) throw updateError;
+
+        if (context.trx) {
+          if (!context.trx.active) {
+            throw new Error('Transaction already completed');
+          }
+          if (state.lockOwner !== context.trx) {
+            throw new Error('Cannot update lock without owning it');
+          }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(obj, 'is_locked')) {
+          state.is_locked = obj.is_locked;
+          return 1;
+        }
+
+        return 0;
+      },
     };
+
     return builder;
   };
+
+  const removeWaitersFor = (trx) => {
+    state.waiters = state.waiters.filter((waiter) => {
+      if (waiter.trx === trx) {
+        waiter.resolve();
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const releaseLockToNext = () => {
+    while (state.waiters.length > 0) {
+      const next = state.waiters.shift();
+      if (!next.trx.active) {
+        next.resolve();
+        continue;
+      }
+      state.lockOwner = next.trx;
+      next.resolve();
+      return;
+    }
+    state.lockOwner = null;
+  };
+
+  const knex = () => createBuilder();
   knex.schema = { hasTable: async () => true };
   knex._state = state;
+
+  knex.transaction = async () => {
+    const trx = () => createBuilder({ trx });
+    trx.active = true;
+    trx.beforeState = state.is_locked;
+
+    trx.acquireLock = async () => {
+      if (!trx.active) throw new Error('Transaction completed');
+
+      if (state.lockOwner === trx) return;
+
+      if (state.lockOwner === null) {
+        state.lockOwner = trx;
+        return;
+      }
+
+      const waiter = { trx };
+      const promise = new Promise((resolve) => {
+        waiter.resolve = resolve;
+      });
+      state.waiters.push(waiter);
+      await promise;
+
+      if (!trx.active) {
+        throw new Error('Transaction aborted while waiting for lock');
+      }
+
+      if (state.lockOwner !== trx) {
+        throw new Error('Failed to obtain migration lock');
+      }
+    };
+
+    const finalize = () => {
+      removeWaitersFor(trx);
+
+      if (state.lockOwner === trx) {
+        releaseLockToNext();
+      }
+    };
+
+    trx.commit = async () => {
+      if (!trx.active) return;
+      trx.active = false;
+      finalize();
+    };
+
+    trx.rollback = async () => {
+      if (!trx.active) return;
+      trx.active = false;
+      state.is_locked = trx.beforeState;
+      finalize();
+    };
+
+    return trx;
+  };
+
+  state.releaseExternalLock = () => {
+    if (state.lockOwner === 'external') {
+      state.lockOwner = null;
+      releaseLockToNext();
+    }
+  };
+
   return knex;
 }

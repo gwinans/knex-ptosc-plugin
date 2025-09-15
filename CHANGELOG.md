@@ -5,6 +5,7 @@
 **0.2.15**
 
 - Centralized ptosc option validation with `validatePtoscOptions` helper.
+- Acquire migration lock within a transaction using `SELECT ... FOR UPDATE` to block callers without busy looping.
 
 ### 2025-09-14:
 
