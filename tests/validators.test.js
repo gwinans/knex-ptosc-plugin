@@ -7,7 +7,7 @@ vi.mock('../src/ptosc-runner.js', () => ({
 }));
 
 import { alterTableWithPtoscRaw, alterTableWithPtosc } from '../src/index.js';
-import { assertPositiveInteger, assertPositiveNumber } from '../src/validators.js';
+import { assertPositiveInteger, assertPositiveNumber, validatePtoscOptions } from '../src/validators.js';
 
 describe('alterTableWithPtoscRaw option validation', () => {
   let knex;
@@ -77,5 +77,18 @@ describe('assert helpers', () => {
     expect(() => assertPositiveNumber('test', 0)).toThrow(TypeError);
     expect(() => assertPositiveNumber('test', -1.2)).toThrow(TypeError);
     expect(() => assertPositiveNumber('test', 'foo')).toThrow(TypeError);
+  });
+});
+
+describe('validatePtoscOptions', () => {
+  it('applies defaults and validates', () => {
+    const opts = validatePtoscOptions({});
+    expect(opts.alterForeignKeysMethod).toBe('auto');
+    expect(opts.chunkSize).toBe(1000);
+    expect(opts.analyzeBeforeSwap).toBe(true);
+  });
+
+  it('throws for invalid alterForeignKeysMethod', () => {
+    expect(() => validatePtoscOptions({ alterForeignKeysMethod: 'invalid' })).toThrow(TypeError);
   });
 });

@@ -1,9 +1,7 @@
 import { acquireMigrationLock } from './lock.js';
 import { buildPtoscArgs, runPtoscProcess } from './ptosc-runner.js';
 import { isDebugEnabled } from './debug.js';
-import { assertPositiveInteger, assertPositiveNumber } from './validators.js';
-
-const VALID_FOREIGN_KEYS_METHODS = ['auto', 'rebuild_constraints', 'drop_swap', 'none'];
+import { assertPositiveInteger, validatePtoscOptions } from './validators.js';
 const INSTANT_UNSUPPORTED_ERRNOS = [1846, 1847, 4092];
 
 const versionCache = new WeakMap();
@@ -33,46 +31,31 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     maxLoadMetric,
     criticalLoad,
     criticalLoadMetric,
-    alterForeignKeysMethod = 'auto',
+    alterForeignKeysMethod,
     ptoscPath,
-    analyzeBeforeSwap = true,
-    checkAlter = true,
-    checkForeignKeys = true,
+    analyzeBeforeSwap,
+    checkAlter,
+    checkForeignKeys,
     checkInterval,
-    checkPlan = true,
-    checkReplicationFilters = true,
-    checkReplicaLag = false,
+    checkPlan,
+    checkReplicationFilters,
+    checkReplicaLag,
     chunkIndex,
     chunkIndexColumns,
-    chunkSize = 1000,
-    chunkSizeLimit = 4.0,
-    chunkTime = 0.5,
-    dropNewTable = true,
-    dropOldTable = true,
-    dropTriggers = true,
-    checkUniqueKeyChange = true,
-    maxLag = 25,
+    chunkSize,
+    chunkSizeLimit,
+    chunkTime,
+    dropNewTable,
+    dropOldTable,
+    dropTriggers,
+    checkUniqueKeyChange,
+    maxLag,
     maxBuffer,
-    logger = console,
+    logger,
     onProgress,
-    statistics = false,
+    statistics,
     onStatistics
-  } = options;
-
-  if (maxLoad !== undefined) assertPositiveInteger('maxLoad', maxLoad);
-  if (criticalLoad !== undefined) assertPositiveInteger('criticalLoad', criticalLoad);
-  if (checkInterval !== undefined) assertPositiveInteger('checkInterval', checkInterval);
-  if (chunkIndexColumns !== undefined) assertPositiveInteger('chunkIndexColumns', chunkIndexColumns);
-  if (chunkSize !== undefined) assertPositiveInteger('chunkSize', chunkSize);
-  if (chunkSizeLimit !== undefined) assertPositiveNumber('chunkSizeLimit', chunkSizeLimit);
-  if (chunkTime !== undefined) assertPositiveNumber('chunkTime', chunkTime);
-  if (maxLag !== undefined) assertPositiveInteger('maxLag', maxLag);
-  if (maxBuffer !== undefined) assertPositiveInteger('maxBuffer', maxBuffer);
-  if (!VALID_FOREIGN_KEYS_METHODS.includes(alterForeignKeysMethod)) {
-    throw new TypeError(
-      `alterForeignKeysMethod must be one of ${VALID_FOREIGN_KEYS_METHODS.join(', ')}; got '${alterForeignKeysMethod}'.`
-    );
-  }
+  } = validatePtoscOptions(options);
 
   const conn = knex.client.config.connection || {};
   const usedPassword = password ?? conn.password;
