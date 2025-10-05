@@ -44,6 +44,26 @@ describe('alterTableWithPtoscRaw option validation', () => {
       alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { ptoscMinRows: -1 })
     ).rejects.toBeInstanceOf(TypeError);
   });
+
+  it('validates ptosc options even when INSTANT alters succeed', async () => {
+    const rawImpl = vi.fn((sql) => {
+      if (sql === 'SELECT VERSION() AS version') {
+        return Promise.resolve([{ version: '8.0.34' }]);
+      }
+      if (/ALGORITHM=INSTANT/.test(sql)) {
+        return Promise.resolve();
+      }
+      return Promise.resolve();
+    });
+
+    const knex = createKnexMock({ rawImpl });
+
+    await expect(
+      alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { chunkSize: 0 })
+    ).rejects.toBeInstanceOf(TypeError);
+
+    expect(rawImpl).not.toHaveBeenCalledWith(expect.stringMatching(/ALGORITHM=INSTANT/));
+  });
 });
 
 describe('alterTableWithPtosc option validation', () => {

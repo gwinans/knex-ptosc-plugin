@@ -24,7 +24,7 @@ async function getMysqlVersion(knex) {
  * INTERNAL ONLY: run pt-osc for one ALTER clause (no CREATE handling here).
  * Not exported to avoid any public raw-SQL entrypoint.
  */
-async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
+async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}, validatedOptions) {
   const {
     password,
     maxLoad,
@@ -55,7 +55,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
     onProgress,
     statistics,
     onStatistics
-  } = validatePtoscOptions(options);
+  } = validatedOptions ?? validatePtoscOptions(options);
 
   const conn = knex.client.config.connection || {};
   const usedPassword = password ?? conn.password;
@@ -136,6 +136,7 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}) {
 }
 
 async function runAlterClause(knex, table, alterClause, options = {}) {
+  const validatedOptions = validatePtoscOptions(options);
   const { forcePtosc, ptoscMinRows = 0 } = options;
 
   if (ptoscMinRows !== 0) {
@@ -184,13 +185,13 @@ async function runAlterClause(knex, table, alterClause, options = {}) {
           (/ALGORITHM=INSTANT/i.test(msg) && /unsupported|not supported/i.test(msg)) ||
           /Maximum row versions/i.test(msg)
         ) {
-          return await runAlterClauseWithPtosc(knex, table, alterClause, options);
+          return await runAlterClauseWithPtosc(knex, table, alterClause, options, validatedOptions);
         }
         throw err;
       }
     }
   }
-  return await runAlterClauseWithPtosc(knex, table, alterClause, options);
+  return await runAlterClauseWithPtosc(knex, table, alterClause, options, validatedOptions);
 }
 
 /**

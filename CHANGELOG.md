@@ -1,5 +1,12 @@
 # CHANGELOG
 
+### 2025-10-05:
+
+**0.2.16**
+
+- Validate pt-osc options before attempting INSTANT alters so invalid values throw even when pt-osc is not invoked.
+- Added regression test ensuring invalid pt-osc options fail fast when INSTANT alters succeed.
+
 ### 2025-09-15:
 
 **0.2.15**
