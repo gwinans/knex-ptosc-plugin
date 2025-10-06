@@ -6,6 +6,7 @@
 
 - Validate pt-osc options before attempting INSTANT alters so invalid values throw even when pt-osc is not invoked.
 - Added regression test ensuring invalid pt-osc options fail fast when INSTANT alters succeed.
+- Prevent `acquireMigrationLock` from overwriting an existing Knex migration lock by requiring `is_locked = 0` during the update.
 
 ### 2025-09-15:
 

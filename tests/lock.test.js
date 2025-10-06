@@ -82,6 +82,12 @@ describe('acquireMigrationLock', () => {
     expect(logger.error).toHaveBeenCalledWith('Failed to acquire migration lock', error);
   });
 
+  it('refuses to override an existing lock set outside this transaction', async () => {
+    const knex = createLockKnexMock(1, { externalLock: false });
+    await expect(acquireMigrationLock(knex)).rejects.toThrow('Migration lock already held in knex_migrations_lock');
+    expect(knex._state.is_locked).toBe(1);
+  });
+
   it('logs and surfaces errors from lock status read', async () => {
     const error = new Error('select failed');
     const knex = createLockKnexMock(1, { selectError: error });
