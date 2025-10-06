@@ -47,9 +47,17 @@ export function createLockKnexMock(initial = 0, opts = {}) {
 
   const createBuilder = (context = {}) => {
     let forUpdate = false;
+    let expectedIsLocked;
 
     const builder = {
-      where() {
+      where(condition, value) {
+        if (typeof condition === 'object' && condition !== null) {
+          if (Object.prototype.hasOwnProperty.call(condition, 'is_locked')) {
+            expectedIsLocked = condition.is_locked;
+          }
+        } else if (condition === 'is_locked' && value !== undefined) {
+          expectedIsLocked = value;
+        }
         return builder;
       },
       forUpdate() {
@@ -83,10 +91,16 @@ export function createLockKnexMock(initial = 0, opts = {}) {
         }
 
         if (Object.prototype.hasOwnProperty.call(obj, 'is_locked')) {
+          if (expectedIsLocked !== undefined && state.is_locked !== expectedIsLocked) {
+            expectedIsLocked = undefined;
+            return 0;
+          }
+          expectedIsLocked = undefined;
           state.is_locked = obj.is_locked;
           return 1;
         }
 
+        expectedIsLocked = undefined;
         return 0;
       },
     };

@@ -109,12 +109,25 @@ export async function acquireMigrationLock(
       throw new Error(`Missing row in ${migrationsLockTable}`);
     }
 
-    await trx(migrationsLockTable)
-      .update({ is_locked: 1 })
-      .catch((err) => {
-        logger.error('Failed to acquire migration lock', err);
-        throw err;
-      });
+    if (row.is_locked) {
+      throw new Error(`Migration lock already held in ${migrationsLockTable}`);
+    }
+
+    let updated;
+    try {
+      updated = await trx(migrationsLockTable)
+        .where({ is_locked: 0 })
+        .update({ is_locked: 1 });
+    } catch (err) {
+      logger.error('Failed to acquire migration lock', err);
+      throw err;
+    }
+
+    if (!updated) {
+      const err = new Error(`Failed to acquire migration lock from ${migrationsLockTable}`);
+      logger.error('Failed to acquire migration lock', err);
+      throw err;
+    }
 
     return { release };
   } catch (err) {
