@@ -1,5 +1,13 @@
 # CHANGELOG
 
+### 2026-02-17:
+
+**0.2.17**
+
+- Added strict runtime validation for pt-osc option booleans, callbacks, logger methods, and string fields to fail fast on invalid configuration.
+- Validate `forcePtosc` as a boolean before choosing instant-alter vs pt-osc paths.
+- Expanded validator test coverage for new assertion helpers and option-shape validation.
+
 ### 2025-10-05:
 
 **0.2.16**

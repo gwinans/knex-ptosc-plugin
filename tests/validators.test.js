@@ -7,7 +7,14 @@ vi.mock('../src/ptosc-runner.js', () => ({
 }));
 
 import { alterTableWithPtoscRaw, alterTableWithPtosc } from '../src/index.js';
-import { assertPositiveInteger, assertPositiveNumber, validatePtoscOptions } from '../src/validators.js';
+import {
+  assertBoolean,
+  assertFunction,
+  assertNonEmptyString,
+  assertPositiveInteger,
+  assertPositiveNumber,
+  validatePtoscOptions,
+} from '../src/validators.js';
 
 describe('alterTableWithPtoscRaw option validation', () => {
   let knex;
@@ -42,6 +49,13 @@ describe('alterTableWithPtoscRaw option validation', () => {
   it('throws for invalid ptoscMinRows', async () => {
     await expect(
       alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { ptoscMinRows: -1 })
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+
+
+  it('throws for invalid forcePtosc', async () => {
+    await expect(
+      alterTableWithPtoscRaw(knex, 'ALTER TABLE widgets ADD COLUMN foo INT', { forcePtosc: 'yes' })
     ).rejects.toBeInstanceOf(TypeError);
   });
 
@@ -98,6 +112,19 @@ describe('assert helpers', () => {
     expect(() => assertPositiveNumber('test', -1.2)).toThrow(TypeError);
     expect(() => assertPositiveNumber('test', 'foo')).toThrow(TypeError);
   });
+
+  it('assertBoolean throws on non-booleans', () => {
+    expect(() => assertBoolean('test', 'true')).toThrow(TypeError);
+  });
+
+  it('assertNonEmptyString throws on empty strings', () => {
+    expect(() => assertNonEmptyString('test', '')).toThrow(TypeError);
+    expect(() => assertNonEmptyString('test', '   ')).toThrow(TypeError);
+  });
+
+  it('assertFunction throws on non-functions', () => {
+    expect(() => assertFunction('test', 123)).toThrow(TypeError);
+  });
 });
 
 describe('validatePtoscOptions', () => {
@@ -110,5 +137,23 @@ describe('validatePtoscOptions', () => {
 
   it('throws for invalid alterForeignKeysMethod', () => {
     expect(() => validatePtoscOptions({ alterForeignKeysMethod: 'invalid' })).toThrow(TypeError);
+  });
+
+  it('throws for invalid logger shape', () => {
+    expect(() => validatePtoscOptions({ logger: {} })).toThrow(/logger\.log/);
+  });
+
+  it('throws for invalid callback options', () => {
+    expect(() => validatePtoscOptions({ onProgress: 'nope' })).toThrow(/onProgress/);
+    expect(() => validatePtoscOptions({ onStatistics: 'nope' })).toThrow(/onStatistics/);
+  });
+
+  it('throws for invalid boolean options', () => {
+    expect(() => validatePtoscOptions({ checkPlan: 'true' })).toThrow(/checkPlan/);
+  });
+
+  it('throws for invalid string options', () => {
+    expect(() => validatePtoscOptions({ ptoscPath: '' })).toThrow(/ptoscPath/);
+    expect(() => validatePtoscOptions({ maxLoadMetric: '' })).toThrow(/maxLoadMetric/);
   });
 });

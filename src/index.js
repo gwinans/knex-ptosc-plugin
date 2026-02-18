@@ -1,7 +1,7 @@
 import { acquireMigrationLock } from './lock.js';
 import { buildPtoscArgs, runPtoscProcess } from './ptosc-runner.js';
 import { isDebugEnabled } from './debug.js';
-import { assertPositiveInteger, validatePtoscOptions } from './validators.js';
+import { assertBoolean, assertPositiveInteger, validatePtoscOptions } from './validators.js';
 const INSTANT_UNSUPPORTED_ERRNOS = [1846, 1847, 4092];
 
 const versionCache = new WeakMap();
@@ -138,6 +138,10 @@ async function runAlterClauseWithPtosc(knex, table, alterClause, options = {}, v
 async function runAlterClause(knex, table, alterClause, options = {}) {
   const validatedOptions = validatePtoscOptions(options);
   const { forcePtosc, ptoscMinRows = 0 } = options;
+
+  if (forcePtosc !== undefined) {
+    assertBoolean('forcePtosc', forcePtosc);
+  }
 
   if (ptoscMinRows !== 0) {
     assertPositiveInteger('ptoscMinRows', ptoscMinRows);
