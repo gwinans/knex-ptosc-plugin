@@ -106,7 +106,7 @@ npm install knex-ptosc-plugin
 | `dropTriggers` | `boolean` | `true` | `--drop-triggers` or `--nodrop-triggers` |
 | `checkUniqueKeyChange` | `boolean` | `true` | `--check-unique-key-change` or `--nocheck-unique-key-change` |
 | `maxLag` | `number` | `25` | Passed to `--max-lag` |
-| `maxBuffer` | `number` | `10485760` | `child_process.execFile` `maxBuffer` in bytes |
+| `maxBuffer` | `number` | `10485760` | Combined stdout/stderr capture limit in bytes |
 | `logger` | `{ log: Function, error: Function }` | `console` | Override default logging methods |
 | `onProgress` | `(pct: number, eta?: string) => void` | `undefined` | Callback for progress percentage and optional ETA parsed from output; logs include pt-osc ETA when available |
 | `statistics` | `boolean` | `false` | Adds `--statistics`; log and collect internal pt-osc counters |
@@ -115,6 +115,9 @@ npm install knex-ptosc-plugin
 | `migrationsLockTable` | `string` | `'knex_migrations_lock'` | Overrides migrations lock table name used when acquiring lock |
 | `timeoutMs` | `number` | `30000` | Timeout in ms when acquiring migration lock |
 | `intervalMs` | `number` | `500` | Delay between lock retries in ms |
+
+All options are validated up front. Invalid booleans, callbacks, logger methods,
+or empty string values now throw a `TypeError` before migrations start.
 
 ### Statistics example
 
