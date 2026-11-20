@@ -16,7 +16,10 @@ export interface PtoscOptions {
   checkInterval?: number;
   checkPlan?: boolean;
   checkReplicationFilters?: boolean;
-  checkReplicaLag?: boolean;
+  checkReplicaLag?: string | false;
+  lockOwner?: 'plugin' | 'knex';
+  groupAlters?: boolean;
+  onPlan?: (step: { table: string; clause: string; route: 'native' | 'instant' | 'ptosc' }) => void;
   chunkIndex?: string;
   chunkIndexColumns?: number;
   chunkSize?: number;

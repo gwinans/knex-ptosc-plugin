@@ -28,7 +28,7 @@ describe('buildPtoscArgs', () => {
       checkInterval: 5,
       checkPlan: false,
       checkReplicationFilters: false,
-      checkReplicaLag: true,
+      checkReplicaLag: 'h=replica',
       chunkIndex: 'id',
       chunkIndexColumns: 2,
       chunkSize: 500,
@@ -58,7 +58,7 @@ describe('buildPtoscArgs', () => {
       '--check-interval', '5',
       '--nocheck-plan',
       '--nocheck-replication-filters',
-      '--check-replica-lag',
+      '--check-replica-lag', 'h=replica',
       '--chunk-index', 'id',
       '--chunk-index-columns', '2',
       '--chunk-size', '500',
@@ -172,11 +172,24 @@ describe('runPtoscProcess', () => {
     stdout.write('a'.repeat(11));
     stdout.end();
     stderr.end();
+    const settled = vi.fn();
+    promise.catch(settled);
+    await new Promise(resolve => setImmediate(resolve));
+    expect(settled).not.toHaveBeenCalled();
+    child.emit('close', null, 'SIGTERM');
     await expect(promise).rejects.toThrow(/maxBuffer exceeded/);
     expect(child.kill).toHaveBeenCalled();
 
     spawnSpy.mockRestore();
     spawnSyncSpy.mockRestore();
+  });
+
+  it('rejects a real child terminated by a signal', async () => {
+    await expect(runPtoscProcess({
+      ptoscPath: process.execPath,
+      args: ['-e', 'process.kill(process.pid, "SIGTERM")'],
+      logger: { log: vi.fn(), error: vi.fn() },
+    })).rejects.toMatchObject({ code: null, signal: 'SIGTERM' });
   });
 
   it('propagates non-zero exit code with captured logs', async () => {

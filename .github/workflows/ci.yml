@@ -1,69 +1,67 @@
 name: CI
-
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened]
-    paths-ignore:
-      - '*.md'
-      - '**/*.md'
-      - '.github/**'
-      - 'LICENSE'
-      - '.gitignore'
-      - '.editorconfig'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test:
-
-    runs-on: ubuntu-latest
-
+  unit:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: mirromutth/mysql-action@v1.1
-        with:
-          character set server: 'utf8' # Optional, default value is 'utf8mb4'. The '--character-set-server' option for mysqld
-          collation server: 'utf8_general_ci' # Optional, default value is 'utf8mb4_general_ci'. The '--collation-server' option for mysqld
-          mysql version: '8.0.40' # Optional, default value is "latest". The version of the MySQL
-          mysql database: 'ptosc' # Optional, default value is "test". The specified database which will be create
-          mysql root password: 'test' # Required if "mysql user" is empty, default is empty. The root superuser password
-
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+      - run: npm ci
+      - run: npm test
 
-      - name: Install MySQL client and pt-online-schema-change
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mysql-client curl
-          sudo curl -O https://repo.percona.com/apt/percona-release_latest.generic_all.deb
-          sudo apt-get install -y gnupg2 lsb-release ./percona-release_latest.generic_all.deb
-          sudo percona-release enable tools release
-          sudo apt update
-          sudo apt-get install -y percona-toolkit
-
-      - name: Wait for MySQL
-        run: |
-          for i in {1..30}; do
-            mysql -h 127.0.0.1 -uroot -ptest -e "SELECT 1" && break
-            sleep 1
-          done
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run unit tests
-        run: npm test
-
-      - name: Run test application
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0.40
         env:
-          DB_HOST: 127.0.0.1
-          DB_USER: root
-          DB_PASSWORD: test
-          DB_NAME: ptosc
-          DEBUG: knex-ptosc-plugin
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: ptosc
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysql -uroot -ptest -e 'SELECT 1'"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      DB_PASSWORD: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: integration/package-lock.json
+      - name: Install Percona Toolkit
         run: |
-          git clone https://github.com/gwinans/kpp-test-app
-          cd kpp-test-app
-          npm install
-          ./node_modules/.bin/knex migrate:latest
+          curl -fsSLo /tmp/percona-release.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+          sudo apt-get install -y /tmp/percona-release.deb
+          sudo percona-release enable tools release
+          sudo apt-get update
+          sudo apt-get install -y percona-toolkit
+          pt-online-schema-change --version
+      - name: Install this checkout into the fixture
+        run: |
+          package=$(npm pack --silent --pack-destination "$RUNNER_TEMP")
+          cd integration
+          npm ci
+          npm install --no-save --package-lock=false "$RUNNER_TEMP/$package"
+      - name: Migrate, verify, and roll back
+        working-directory: integration
+        run: |
+          ./node_modules/.bin/knex --knexfile knexfile.cjs migrate:latest
+          node verify.cjs up
+          ./node_modules/.bin/knex --knexfile knexfile.cjs migrate:rollback
+          node verify.cjs down

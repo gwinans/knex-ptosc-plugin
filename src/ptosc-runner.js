@@ -73,7 +73,7 @@ export function buildPtoscArgs({
   if (checkInterval != null) args.push('--check-interval', String(checkInterval));
   args.push(checkPlan ? '--check-plan' : '--nocheck-plan');
   args.push(checkReplicationFilters ? '--check-replication-filters' : '--nocheck-replication-filters');
-  if (checkReplicaLag) args.push('--check-replica-lag');
+  if (checkReplicaLag) args.push('--check-replica-lag', checkReplicaLag);
   if (chunkIndex) args.push('--chunk-index', chunkIndex);
   if (chunkIndexColumns != null) args.push('--chunk-index-columns', String(chunkIndexColumns));
   if (chunkSize != null) args.push('--chunk-size', String(chunkSize));
@@ -89,7 +89,7 @@ export function buildPtoscArgs({
 }
 
 function logCommand(ptoscPath, args, logger = console) {
-  const printable = [ptoscPath, ...args.map(a => (/\s/.test(a) ? `"${a}"` : a))].join(' ');
+  const printable = [ptoscPath, ...args.map((a, i) => args[i - 1] === '--check-replica-lag' ? '[replica DSN]' : (/\s/.test(a) ? `"${a}"` : a))].join(' ');
   logger.log(`[PT-OSC] Running: ${printable}`);
 }
 
@@ -120,6 +120,7 @@ export async function runPtoscProcess({
     let stderr = '';
     let total = 0;
     let settled = false;
+    let overflowError;
     const progressRegex = /\b(\d{1,3}(?:\.\d+)?)%(?:\s+(\d+:\d+(?::\d+)?)\s+remain)?/;
     const statisticsRegex = /^#\s*([^#]+?)\s+(\d+(?:\.\d+)?)\s*$/;
     const statistics = {};
@@ -134,15 +135,15 @@ export async function runPtoscProcess({
     const resolveOnce = (value) => settle(() => resolve(value));
 
     const handleData = (chunk, isErr) => {
-      if (settled) return;
+      if (settled || overflowError) return;
       const str = chunk.toString();
       total += Buffer.byteLength(str);
       if (total > maxBuffer) {
+        overflowError = new Error('pt-online-schema-change maxBuffer exceeded');
+        overflowError.stdout = stdout;
+        overflowError.stderr = stderr;
         child.kill();
-        const error = new Error('pt-online-schema-change maxBuffer exceeded');
-        error.stdout = stdout;
-        error.stderr = stderr;
-        return rejectOnce(error);
+        return;
       }
       if (isErr) {
         stderr += str;
@@ -152,7 +153,7 @@ export async function runPtoscProcess({
     };
 
     const handleLine = (line, isErr) => {
-      if (settled) return;
+      if (settled || overflowError) return;
       const normalized = line.replace(/\r/g, '');
       if (!normalized) return;
       if (debug) {
@@ -185,7 +186,7 @@ export async function runPtoscProcess({
     }
 
     child.on('error', (err) => {
-      if (settled) return;
+      if (settled || overflowError) return;
       logger.error(`pt-online-schema-change failed with code ${err.code}`);
       if (stdout) logger.error(`[PT-OSC] stdout:\n${stdout}`);
       if (stderr) logger.error(`[PT-OSC] stderr:\n${stderr}`);
@@ -197,14 +198,16 @@ export async function runPtoscProcess({
       rejectOnce(error);
     });
 
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
       if (settled) return;
-      if (code) {
+      if (overflowError) return rejectOnce(overflowError);
+      if (code !== 0 || signal) {
         logger.error(`pt-online-schema-change failed with code ${code}`);
         if (stdout) logger.error(`[PT-OSC] stdout:\n${stdout}`);
         if (stderr) logger.error(`[PT-OSC] stderr:\n${stderr}`);
 
-        const error = new Error('pt-online-schema-change failed');
+        const error = new Error(signal ? 'pt-online-schema-change terminated by ' + signal : 'pt-online-schema-change failed');
+        error.signal = signal;
         error.code = code;
         error.stdout = stdout;
         error.stderr = stderr;

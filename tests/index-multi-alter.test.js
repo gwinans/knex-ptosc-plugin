@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 
 describe('alterTableWithPtosc with multiple ALTER statements', () => {
-  it('acquires/releases lock, runs index natively, aggregates ptosc stats', async () => {
+  it('acquires/releases lock, forces every statement through ptosc, aggregates ptosc stats', async () => {
     const release = vi.fn();
     acquireMigrationLock.mockResolvedValue({ release });
 
@@ -27,7 +27,9 @@ describe('alterTableWithPtosc with multiple ALTER statements', () => {
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ statistics: { first: 1 } })
       .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ statistics: { second: 2 } });
+      .mockResolvedValueOnce({ statistics: { second: 2 } })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ statistics: { third: 3 } });
 
     const knex = createKnexMockBuilder({
       toSQL: (name) => [
@@ -42,10 +44,10 @@ describe('alterTableWithPtosc with multiple ALTER statements', () => {
     expect(release).toHaveBeenCalledTimes(1);
 
     const execCalls = knex.raw.mock.calls.filter(([, bindings]) => bindings === undefined);
-    expect(execCalls).toEqual([["ALTER TABLE widgets ADD INDEX idx_foo (foo)"]]);
+    expect(execCalls).toEqual([]);
 
-    expect(runPtoscProcess).toHaveBeenCalledTimes(4);
-    expect(stats).toEqual([{ first: 1 }, { second: 2 }]);
+    expect(runPtoscProcess).toHaveBeenCalledTimes(6);
+    expect(stats).toEqual([{ first: 1 }, { second: 2 }, { third: 3 }]);
   });
 });
 
