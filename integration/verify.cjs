@@ -5,6 +5,8 @@ async function verify() {
   const exists = await knex.schema.hasTable('widgets');
   if (process.argv[2] === 'down') {
     assert.equal(exists, false);
+    assert.equal(await knex.schema.hasTable('orders'), false);
+    assert.equal(await knex.schema.hasTable('order_items'), false);
     return;
   }
   assert.equal(exists, true);

@@ -2,6 +2,10 @@
 
 ### 2026-11-19:
 
+**0.3.1**
+
+- Exercise foreign-key enforcement, data preservation and cascading deletes across parent and child pt-osc swaps on migration and rollback.
+
 **0.3.0**
 
 - Share routing between builder and raw ALTERs, prioritize forced pt-osc, and propagate native DDL failures.

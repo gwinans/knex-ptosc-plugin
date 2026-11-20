@@ -153,6 +153,9 @@ logged regardless of `DEBUG`, including any trailing lines that lack a newline.
 Run `npm ci && npm test` for lint and unit tests. CI packs the checkout and
 installs the tarball into the local integration fixture. It migrates a MySQL
 8.0 database, checks column types, index and row preservation, and rolls back.
+CI also forces pt-osc swaps on a referenced parent and its child using `auto`
+on migration and `rebuild_constraints` on rollback. After each swap it verifies
+the column types, joined data, referenced table, orphan rejection and cascading deletes.
 To reproduce it locally, use a disposable database and set DB_HOST, DB_PORT,
 DB_USER, DB_PASSWORD and DB_NAME as needed. The exact install and migration
 commands are in [.github/workflows/ci.yml](.github/workflows/ci.yml).
