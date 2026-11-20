@@ -1,5 +1,19 @@
 # CHANGELOG
 
+### 2026-11-19:
+
+**0.3.1**
+
+- Exercise foreign-key enforcement, data preservation and cascading deletes across parent and child pt-osc swaps on migration and rollback.
+
+**0.3.0**
+
+- Share routing between builder and raw ALTERs, prioritize forced pt-osc, and propagate native DDL failures.
+- Support explicit lock ownership, route callbacks, and opt-in grouping of compatible forced ALTERs.
+- Require a replica DSN when selecting a specific replica for lag checks.
+- Report process signals and wait for process closure on buffer overflow.
+- Exercise the packed checkout with a repository-local MySQL migration fixture in CI.
+
 ### 2026-02-17:
 
 **0.2.17**

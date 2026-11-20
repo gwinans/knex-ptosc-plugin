@@ -26,7 +26,7 @@ instead knex will handle it.
 
 **Github Repo:** https://github.com/gwinans/knex-ptosc-plugin
 
-**Test App:** https://github.com/gwinans/kpp-test-app
+**Integration fixture:** [integration/](integration/)
 
 Please, come contribute! Star the project!
 
@@ -38,7 +38,7 @@ Please, come contribute! Star the project!
   are passed directly to the pt-osc binary.
 - **Password safety**: The database password is passed via `MYSQL_PWD`
   environment variable (never on the command line or in logs).
-- **Atomic migration lock**: Uses Knex’s migrations lock row
+- **Standalone migration lock**: By default the plugin uses Knex’s migrations lock row
   (`knex_migrations_lock` by default) to prevent concurrent schema changes.
   Table names can be customized with `migrationsTable` and
   `migrationsLockTable`. Both tables must exist before running migrations;
@@ -52,7 +52,7 @@ Please, come contribute! Star the project!
   `ALTER TABLE ... ALGORITHM=INSTANT` and falls back to pt-osc when unsupported or
   when MySQL returns error 4092 ("Maximum row versions").
 - **Native index operations**: `ADD INDEX` and `DROP INDEX` statements run
-  directly via Knex without pt-osc.
+  directly via Knex unless forced through pt-osc. Mixed or unrecognized index clauses follow the normal ALTER routing rules.
 
 Servers running MySQL 5.6 or 5.7 skip the instant-alter attempt and always use
 pt-online-schema-change. This will not be changed - MySQL 5.6 and 5.7 are
@@ -88,14 +88,17 @@ npm install knex-ptosc-plugin
 | `alterForeignKeysMethod` | `'auto' \| 'rebuild_constraints' \| 'drop_swap' \| 'none'` | `'auto'` | Passed to `--alter-foreign-keys-method` |
 | `ptoscPath` | `string` | `'pt-online-schema-change'` | Path to pt-osc binary |
 | `forcePtosc` | `boolean` | `false` | Skip the instant-alter attempt and always run pt-osc |
-| `ptoscMinRows` | `number` | `0` | Minimum row count required to use pt-osc; below this, ALTER runs natively |
+| `lockOwner` | string | `'plugin'` | Use `'knex'` inside Knex migrations where the migrator owns the lock. Keep the default for standalone calls. |
+| `onPlan` | function | undefined | Receives `{ table, clause, route }` before each operation. An unsupported INSTANT attempt emits a second event for pt-osc. |
+| `groupAlters` | boolean | false | With `forcePtosc: true`, combine adjacent simple ADD/MODIFY definitions on distinct columns of the same table. Each group uses one dry run and one execute. |
+| `ptoscMinRows` | `number` | `0` | Minimum row count required to use pt-osc; below this, ALTER runs natively unless forcePtosc is set |
 | `analyzeBeforeSwap` | `boolean` | `true` | `--analyze-before-swap` or `--noanalyze-before-swap` |
 | `checkAlter` | `boolean` | `true` | `--check-alter` or `--nocheck-alter` |
 | `checkForeignKeys` | `boolean` | `true` | `--check-foreign-keys` or `--nocheck-foreign-keys` |
 | `checkInterval` | `number` | `undefined` | Passed to `--check-interval` |
 | `checkPlan` | `boolean` | `true` | `--check-plan` or `--nocheck-plan` |
 | `checkReplicationFilters` | `boolean` | `true` | `--check-replication-filters` or `--nocheck-replication-filters` |
-| `checkReplicaLag` | `boolean` | `false` | Adds `--check-replica-lag` |
+| `checkReplicaLag` | string or false | `false` | Replica DSN, e.g. `h=replica1,P=3306`, passed to `--check-replica-lag` |
 | `chunkIndex` | `string` | `undefined` | Passed to `--chunk-index` |
 | `chunkIndexColumns` | `number` | `undefined` | Passed to `--chunk-index-columns` |
 | `chunkSize` | `number` | `1000` | Passed to `--chunk-size` |
@@ -147,11 +150,15 @@ logged regardless of `DEBUG`, including any trailing lines that lack a newline.
 
 ## Testing
 
-Run `npm test` to execute linting and unit tests. Run `npm run test:coverage`
-to include coverage reporting. Continuous integration also clones the
-[kpp-test-app](https://github.com/gwinans/kpp-test-app) and runs its migrations
-against a MySQL instance (`root`/`test`, database `ptosc`) to verify end-to-end
-behavior.
+Run `npm ci && npm test` for lint and unit tests. CI packs the checkout and
+installs the tarball into the local integration fixture. It migrates a MySQL
+8.0 database, checks column types, index and row preservation, and rolls back.
+CI also forces pt-osc swaps on a referenced parent and its child using `auto`
+on migration and `rebuild_constraints` on rollback. After each swap it verifies
+the column types, joined data, referenced table, orphan rejection and cascading deletes.
+To reproduce it locally, use a disposable database and set DB_HOST, DB_PORT,
+DB_USER, DB_PASSWORD and DB_NAME as needed. The exact install and migration
+commands are in [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ---
 
@@ -171,7 +178,16 @@ behavior.
 
 ## Example Migration
 The `alterTableWithPtosc` helper accepts a table name and a schema builder
-callback, ensuring all changes use Knex's builder API.
+callback. In migration files use `lockOwner: 'knex'` and disable the Knex
+transaction for the file (`exports.config = { transaction: false }` in
+CommonJS, or `export const config = { transaction: false }` in ESM). The
+migrator still owns the migration lock. MySQL DDL and the external pt-osc
+connection cannot be rolled back as one Knex transaction.
+
+Grouping is opt-in. Its recognized forms are scalar integer and VARCHAR
+ADD/MODIFY definitions with optional nullability. Expressions, ordering
+directives, indexes, and repeated columns create group boundaries. The input
+order is preserved. Statistics are returned per executed group.
 ### CommonJS
 
 ```js
@@ -184,7 +200,7 @@ exports.up = function (knex) {
     (table) => {
       table.bigInteger('qty').alter();
     },
-    { chunkSize: 500 }
+    { lockOwner: 'knex', chunkSize: 500 }
   );
 };
 
@@ -195,7 +211,7 @@ exports.down = function (knex) {
     (table) => {
       table.integer('qty').alter();
     },
-    { chunkSize: 500 }
+    { lockOwner: 'knex', chunkSize: 500 }
   );
 };
 ```
@@ -212,7 +228,7 @@ export function up(knex) {
     (table) => {
       table.bigInteger('qty').alter();
     },
-    { chunkSize: 500 }
+    { lockOwner: 'knex', chunkSize: 500 }
   );
 }
 
@@ -223,7 +239,7 @@ export function down(knex) {
     (table) => {
       table.integer('qty').alter();
     },
-    { chunkSize: 500 }
+    { lockOwner: 'knex', chunkSize: 500 }
   );
 }
 ```
@@ -236,8 +252,8 @@ import { alterTableWithPtoscRaw } from 'knex-ptosc-plugin';
 export function up(knex) {
   return alterTableWithPtoscRaw(
     knex,
-    'ALTER TABLE widgets ALTER COLUMN qty TYPE BIGINT',
-    { statistics: true }
+    'ALTER TABLE widgets MODIFY COLUMN qty BIGINT',
+    { lockOwner: 'knex', statistics: true }
   );
 }
 ```
@@ -261,7 +277,7 @@ return alterTableWithPtosc(
 
 ### Replica Lag Safeguard
 
-Enable `checkReplicaLag: true` to have pt-osc abort if replicas fall behind, useful in production environments with read replicas:
+Set `checkReplicaLag` to the replica DSN to monitor. pt-osc pauses copying while lag exceeds `maxLag`. In 0.3, replace the old boolean `true` with the replica DSN.
 
 ```js
 return alterTableWithPtosc(
@@ -270,7 +286,7 @@ return alterTableWithPtosc(
   (table) => {
     table.string('status').defaultTo('pending');
   },
-  { checkReplicaLag: true }
+  { checkReplicaLag: 'h=replica1,P=3306', maxLag: 10 }
 );
 ```
 

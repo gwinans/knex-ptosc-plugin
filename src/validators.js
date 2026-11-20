@@ -91,7 +91,7 @@ export function validatePtoscOptions(options = {}) {
   assertBoolean('checkForeignKeys', checkForeignKeys);
   assertBoolean('checkPlan', checkPlan);
   assertBoolean('checkReplicationFilters', checkReplicationFilters);
-  assertBoolean('checkReplicaLag', checkReplicaLag);
+  if (checkReplicaLag !== false) assertNonEmptyString('checkReplicaLag (replica DSN)', checkReplicaLag);
   assertBoolean('dropNewTable', dropNewTable);
   assertBoolean('dropOldTable', dropOldTable);
   assertBoolean('dropTriggers', dropTriggers);

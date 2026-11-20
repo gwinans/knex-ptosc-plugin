@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     coverage: {
       provider: 'v8',
+      include: ['index.js', 'index.cjs', 'src/**/*.js'],
       thresholds: {
         lines: 85,
         branches: 55,
